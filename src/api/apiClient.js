@@ -78,23 +78,20 @@ export const productAPI = {
   getSizeCharts: () => apiClient.get('/size-charts'),
   getSeasons: () => apiClient.get('/seasons'),
   getCategoriesByLevel1: () => apiClient.get('/categories/level1'),
-  getCategoriesByLevel2: (level1Id) => apiClient.get(`/categories/level2?level1_id=${level1Id}`),
-  getCategoriesByLevel3: (level2Id) => apiClient.get(`/categories/level3?level2_id=${level2Id}`),
- getFilters: (parentId) => apiClient.get(`/filters?parent_id=${parentId}`),
-
+  getCategoriesByLevel2: level1Id =>
+    apiClient.get(`/categories/level2?level1_id=${level1Id}`),
+  getCategoriesByLevel3: level2Id =>
+    apiClient.get(`/categories/level3?level2_id=${level2Id}`),
+  getFilters: parentId => apiClient.get(`/filters?parent_id=${parentId}`),
   
 };
 
 export const customerAPI = {
   // Get all customers
-  getAll: () => 
-    apiClient.get('/cusname'),
-  
+  getAll: () => apiClient.get('/cusname'),
+
   // Search customers
-  search: (query) => 
-    apiClient.get(`/cusname?search=${query}`),
+  search: query => apiClient.get(`/cusname?search=${query}`),
 };
-
-
 
 export default apiClient;

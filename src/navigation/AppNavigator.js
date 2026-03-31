@@ -1,10 +1,10 @@
 import React from 'react';
-import {NavigationContainer} from '@react-navigation/native';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {Text, View} from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Text, View } from 'react-native';
 
-import {useAuth} from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 // Screens
@@ -16,21 +16,25 @@ import CreateInvoiceScreen from '../screens/CreateInvoiceScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import BarcodeScanScreen from '../screens/BarcodeScanScreen';
 import CreateProductScreen from '../screens/CreateProductScreen';
+import productsScreen from '../screens/productsScreen';
+import InventoryScanScreen from '../screens/InventoryScanScreen';
+import ScannedItemsScreen from '../screens/ScannedItemsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const TabIcon = ({name, focused}) => {
+const TabIcon = ({ name, focused }) => {
   const icons = {
     Home: '🏠',
     Invoice: '📄',
+    Product: '🛍️',
     Profile: '👤',
   };
 
   return (
     // eslint-disable-next-line react-native/no-inline-styles
-    <View style={{alignItems: 'center'}}>
-      <Text style={{fontSize: 24}}>{icons[name]}</Text>
+    <View style={{ alignItems: 'center' }}>
+      <Text style={{ fontSize: 24 }}>{icons[name]}</Text>
     </View>
   );
 };
@@ -38,9 +42,11 @@ const TabIcon = ({name, focused}) => {
 const MainTabs = () => {
   return (
     <Tab.Navigator
-      screenOptions={({route}) => ({
+      screenOptions={({ route }) => ({
         // eslint-disable-next-line react/no-unstable-nested-components
-        tabBarIcon: ({focused}) => <TabIcon name={route.name} focused={focused} />,
+        tabBarIcon: ({ focused }) => (
+          <TabIcon name={route.name} focused={focused} />
+        ),
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: 'gray',
         tabBarStyle: {
@@ -58,28 +64,34 @@ const MainTabs = () => {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
-      })}>
-      <Tab.Screen 
-        name="Home" 
+      })}
+    >
+      <Tab.Screen
+        name="Home"
         component={HomeScreen}
-        options={{headerShown: false}}
+        options={{ headerShown: false }}
       />
-      <Tab.Screen 
-        name="Invoice" 
+      <Tab.Screen
+        name="Invoice"
         component={InvoiceScreen}
-        options={{title: 'Invoices'}}
+        options={{ title: 'Invoices' }}
       />
-      <Tab.Screen 
-        name="Profile" 
+      <Tab.Screen
+        name="Product"
+        component={productsScreen}
+        options={{ title: 'Products' }}
+      />
+      <Tab.Screen
+        name="Profile"
         component={ProfileScreen}
-        options={{headerShown: false}}
+        options={{ headerShown: false }}
       />
     </Tab.Navigator>
   );
 };
 
 const AppNavigator = () => {
-  const {isAuthenticated, loading} = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return <LoadingSpinner message="Initializing..." />;
@@ -96,28 +108,34 @@ const AppNavigator = () => {
           headerTitleStyle: {
             fontWeight: 'bold',
           },
-        }}>
+        }}
+      >
         {isAuthenticated ? (
           <>
             <Stack.Screen
               name="MainTabs"
               component={MainTabs}
-              options={{headerShown: false}}
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="InvoiceDetail"
               component={InvoiceDetailScreen}
-              options={{title: 'Invoice Details'}}
+              options={{ title: 'Invoice Details' }}
             />
             <Stack.Screen
               name="CreateInvoice"
               component={CreateInvoiceScreen}
-              options={{title: 'Create Invoice'}}
+              options={{ title: 'Create Invoice' }}
             />
-             <Stack.Screen
+            <Stack.Screen
               name="CreateProduct"
               component={CreateProductScreen}
-              options={{title: 'Create Product'}}
+              options={{ title: 'Create Product' }}
+            />
+            <Stack.Screen
+              name="AllProduct"
+              component={productsScreen}
+              options={{ title: 'All Products' }}
             />
             <Stack.Screen
               name="BarcodeScan"
@@ -127,12 +145,22 @@ const AppNavigator = () => {
                 presentation: 'fullScreenModal',
               }}
             />
+            <Stack.Screen
+              name="InventoryScan"
+              component={InventoryScanScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ScannedItems"
+              component={ScannedItemsScreen}
+              options={{ headerShown: false }}
+            />
           </>
         ) : (
           <Stack.Screen
             name="Login"
             component={LoginScreen}
-            options={{headerShown: false}}
+            options={{ headerShown: false }}
           />
         )}
       </Stack.Navigator>

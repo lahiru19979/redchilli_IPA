@@ -206,20 +206,54 @@ const CreateProductScreen = ({ navigation }) => {
       };
     });
 
+  // const requestPermission = async type => {
+  //   const permission =
+  //     Platform.OS === 'android'
+  //       ? type === 'camera'
+  //         ? PERMISSIONS.ANDROID.CAMERA
+  //         : PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE
+  //       : type === 'camera'
+  //       ? PERMISSIONS.IOS.CAMERA
+  //       : PERMISSIONS.IOS.PHOTO_LIBRARY;
+
+  //   const result = await check(permission);
+  //   if (result === RESULTS.GRANTED) return true;
+
+  //   const requested = await request(permission);
+  //   return requested === RESULTS.GRANTED;
+  // };
+
   const requestPermission = async type => {
-    const permission =
-      Platform.OS === 'android'
-        ? type === 'camera'
+    if (type === 'camera') {
+      const permission =
+        Platform.OS === 'android'
           ? PERMISSIONS.ANDROID.CAMERA
-          : PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE
-        : type === 'camera'
-        ? PERMISSIONS.IOS.CAMERA
-        : PERMISSIONS.IOS.PHOTO_LIBRARY;
+          : PERMISSIONS.IOS.CAMERA;
 
-    const result = await check(permission);
+      const result = await check(permission);
+      if (result === RESULTS.GRANTED) return true;
+      const requested = await request(permission);
+      return requested === RESULTS.GRANTED;
+    }
+
+    // Gallery — Android 13+ uses READ_MEDIA_IMAGES instead
+    if (Platform.OS === 'android') {
+      const sdkVersion = Platform.Version;
+      const permission =
+        sdkVersion >= 33
+          ? PERMISSIONS.ANDROID.READ_MEDIA_IMAGES
+          : PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE;
+
+      const result = await check(permission);
+      if (result === RESULTS.GRANTED) return true;
+      const requested = await request(permission);
+      return requested === RESULTS.GRANTED;
+    }
+
+    // iOS
+    const result = await check(PERMISSIONS.IOS.PHOTO_LIBRARY);
     if (result === RESULTS.GRANTED) return true;
-
-    const requested = await request(permission);
+    const requested = await request(PERMISSIONS.IOS.PHOTO_LIBRARY);
     return requested === RESULTS.GRANTED;
   };
 

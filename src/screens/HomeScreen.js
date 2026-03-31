@@ -114,12 +114,22 @@ const HomeScreen = ({navigation}) => {
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => navigation.navigate('CreateProduct')}>
-          <Text style={styles.actionIcon}>🛍️</Text>
+          <Text style={styles.actionIcon}>➕</Text>
           <View style={styles.actionContent}>
             <Text style={styles.actionTitle}>Create Product</Text>
             <Text style={styles.actionSubtitle}>Create a new product</Text>
           </View>
         </TouchableOpacity>
+         <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('InventoryScan')}>
+          <Text style={styles.actionIcon}>➕</Text>
+          <View style={styles.actionContent}>
+            <Text style={styles.actionTitle}>Add Inventory</Text>
+            <Text style={styles.actionSubtitle}>Add new items to inventory</Text>
+          </View>
+        </TouchableOpacity>
+
       </View>
     </ScrollView>
   );
