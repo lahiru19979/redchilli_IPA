@@ -24,6 +24,33 @@ class ScannedItemsStore {
     this.notifyListeners();
   }
 
+  // ✅ New method to update quantity
+  updateQuantity(id, newQuantity) {
+    const item = this.items.find(item => item.id === id);
+    if (item) {
+      item.quantity = Math.max(1, parseInt(newQuantity) || 1);
+      this.notifyListeners();
+    }
+  }
+
+  // ✅ Increment quantity
+  incrementQuantity(id) {
+    const item = this.items.find(item => item.id === id);
+    if (item) {
+      item.quantity += 1;
+      this.notifyListeners();
+    }
+  }
+
+  // ✅ Decrement quantity
+  decrementQuantity(id) {
+    const item = this.items.find(item => item.id === id);
+    if (item && item.quantity > 1) {
+      item.quantity -= 1;
+      this.notifyListeners();
+    }
+  }
+
   getItems() {
     return this.items;
   }
@@ -40,6 +67,15 @@ class ScannedItemsStore {
 
   getTotalCount() {
     return this.items.reduce((sum, item) => sum + item.quantity, 0);
+  }
+
+  // ✅ Get data for saving
+  getDataForSave() {
+    return this.items.map(item => ({
+      barcode: item.barcode,
+      quantity: item.quantity,
+      scannedAt: item.scannedAt,
+    }));
   }
 
   subscribe(listener) {

@@ -7,23 +7,53 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
+  TextInput,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import scannedItemsStore from '../store/scannedItemsStore';
+import {inventoryAPI} from '../api/apiClient';  // ✅ Your API
 
 const ScannedItemsScreen = ({navigation}) => {
   const [items, setItems] = useState([]);
+  const [editingItem, setEditingItem] = useState(null);
+  const [editQuantity, setEditQuantity] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    // Get initial items
     setItems([...scannedItemsStore.getItems()]);
 
-    // Subscribe to updates
     const unsubscribe = scannedItemsStore.subscribe(updatedItems => {
       setItems([...updatedItems]);
     });
 
     return unsubscribe;
   }, []);
+
+  const openEditModal = (item) => {
+    setEditingItem(item);
+    setEditQuantity(item.quantity.toString());
+    setShowEditModal(true);
+  };
+
+  const saveEditedQuantity = () => {
+    if (editingItem) {
+      const qty = parseInt(editQuantity) || 1;
+      scannedItemsStore.updateQuantity(editingItem.id, qty);
+      setShowEditModal(false);
+      setEditingItem(null);
+      setEditQuantity('');
+    }
+  };
+
+  const handleIncrement = (id) => {
+    scannedItemsStore.incrementQuantity(id);
+  };
+
+  const handleDecrement = (id) => {
+    scannedItemsStore.decrementQuantity(id);
+  };
 
   const handleDelete = (id, barcode) => {
     Alert.alert(
@@ -57,12 +87,76 @@ const ScannedItemsScreen = ({navigation}) => {
     );
   };
 
+  // ✅ Save with your inventoryAPI.saveInventory
+  const handleSave = async () => {
+    if (items.length === 0) {
+      Alert.alert('No Items', 'Please scan items before saving.');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // ✅ Prepare data for your Laravel API
+      const inventoryData = {
+        items: items.map(item => ({
+          barcode: item.barcode,
+          quantity: item.quantity,
+        })),
+        total_items: items.length,
+        total_quantity: totalQuantity,
+      };
+
+      console.log('📦 Saving inventory:', JSON.stringify(inventoryData, null, 2));
+
+      // ✅ Call your API
+      const response = await inventoryAPI.saveInventory(inventoryData);
+
+      console.log('✅ API Response:', response.data);
+
+      // Handle success
+      Alert.alert(
+        'Saved Successfully! ✅',
+        `${items.length} items saved\nTotal quantity: ${totalQuantity}`,
+        [
+          {
+            text: 'Scan More',
+            onPress: () => {
+              scannedItemsStore.clearAll();
+              navigation.goBack();
+            },
+          },
+          {
+            text: 'Go Home',
+            onPress: () => {
+              scannedItemsStore.clearAll();
+              navigation.navigate('Home');
+            },
+          },
+        ],
+      );
+    } catch (error) {
+      console.error('❌ Save error:', error);
+      console.error('❌ Error response:', error.response?.data);
+      
+      const errorMessage = error.response?.data?.message 
+        || error.response?.data?.error
+        || error.message 
+        || 'Failed to save. Please try again.';
+      
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+
   const renderTableHeader = () => (
     <View style={styles.tableHeader}>
       <Text style={[styles.headerCell, styles.cellNo]}>#</Text>
       <Text style={[styles.headerCell, styles.cellBarcode]}>Barcode</Text>
-      <Text style={[styles.headerCell, styles.cellQty]}>Qty</Text>
-      <Text style={[styles.headerCell, styles.cellTime]}>Time</Text>
+      <Text style={[styles.headerCell, styles.cellQty]}>Quantity</Text>
       <Text style={[styles.headerCell, styles.cellAction]}>Action</Text>
     </View>
   );
@@ -70,13 +164,31 @@ const ScannedItemsScreen = ({navigation}) => {
   const renderItem = ({item, index}) => (
     <View style={[styles.tableRow, index % 2 === 0 && styles.tableRowEven]}>
       <Text style={[styles.cell, styles.cellNo]}>{index + 1}</Text>
+      
       <Text style={[styles.cell, styles.cellBarcode]} numberOfLines={1}>
         {item.barcode}
       </Text>
-      <Text style={[styles.cell, styles.cellQty]}>{item.quantity}</Text>
-      <Text style={[styles.cell, styles.cellTime]}>{item.lastScanned}</Text>
+      
+      <View style={[styles.cellQty, styles.qtyContainer]}>
+        <TouchableOpacity
+          style={styles.qtyButton}
+          onPress={() => handleDecrement(item.id)}>
+          <Text style={styles.qtyButtonText}>−</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity onPress={() => openEditModal(item)}>
+          <Text style={styles.qtyValue}>{item.quantity}</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={styles.qtyButton}
+          onPress={() => handleIncrement(item.id)}>
+          <Text style={styles.qtyButtonText}>+</Text>
+        </TouchableOpacity>
+      </View>
+      
       <TouchableOpacity
-        style={[styles.cell, styles.cellAction]}
+        style={[styles.cellAction, styles.deleteBtn]}
         onPress={() => handleDelete(item.id, item.barcode)}>
         <Text style={styles.deleteButton}>🗑️</Text>
       </TouchableOpacity>
@@ -97,8 +209,6 @@ const ScannedItemsScreen = ({navigation}) => {
       </TouchableOpacity>
     </View>
   );
-
-  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <View style={styles.container}>
@@ -151,10 +261,86 @@ const ScannedItemsScreen = ({navigation}) => {
           <TouchableOpacity
             style={styles.continueScanButton}
             onPress={() => navigation.goBack()}>
-            <Text style={styles.continueScanText}>📷 Continue Scanning</Text>
+            <Text style={styles.continueScanText}>📷 Scan More</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={isSaving}>
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.saveButtonText}>💾 Save ({totalQuantity})</Text>
+            )}
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Edit Quantity Modal */}
+      <Modal
+        visible={showEditModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowEditModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.editModal}>
+            <Text style={styles.editModalTitle}>Edit Quantity</Text>
+            
+            {editingItem && (
+              <Text style={styles.editModalBarcode}>
+                {editingItem.barcode}
+              </Text>
+            )}
+            
+            <View style={styles.editQtyRow}>
+              <TouchableOpacity
+                style={styles.editQtyButton}
+                onPress={() => {
+                  const newQty = Math.max(1, parseInt(editQuantity) - 1);
+                  setEditQuantity(newQty.toString());
+                }}>
+                <Text style={styles.editQtyButtonText}>−</Text>
+              </TouchableOpacity>
+              
+              <TextInput
+                style={styles.editQtyInput}
+                value={editQuantity}
+                onChangeText={setEditQuantity}
+                keyboardType="number-pad"
+                selectTextOnFocus={true}
+                textAlign="center"
+              />
+              
+              <TouchableOpacity
+                style={styles.editQtyButton}
+                onPress={() => {
+                  const newQty = parseInt(editQuantity) + 1;
+                  setEditQuantity(newQty.toString());
+                }}>
+                <Text style={styles.editQtyButtonText}>+</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.editModalButtons}>
+              <TouchableOpacity
+                style={styles.editCancelButton}
+                onPress={() => {
+                  setShowEditModal(false);
+                  setEditingItem(null);
+                }}>
+                <Text style={styles.editCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.editSaveButton}
+                onPress={saveEditedQuantity}>
+                <Text style={styles.editSaveButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -251,7 +437,7 @@ const styles = StyleSheet.create({
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 14,
+    paddingVertical: 10,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
@@ -265,7 +451,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   cellNo: {
-    width: 40,
+    width: 35,
     textAlign: 'center',
   },
   cellBarcode: {
@@ -273,20 +459,41 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   cellQty: {
-    width: 50,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  cellTime: {
-    width: 70,
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#666',
+    width: 110,
   },
   cellAction: {
-    width: 50,
+    width: 45,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  qtyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyButton: {
+    width: 30,
+    height: 30,
+    backgroundColor: '#007AFF',
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  qtyButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  qtyValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    minWidth: 40,
+    textAlign: 'center',
+    paddingVertical: 4,
+  },
+  deleteBtn: {
+    padding: 5,
   },
   deleteButton: {
     fontSize: 18,
@@ -325,20 +532,126 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bottomActions: {
+    flexDirection: 'row',
     padding: 16,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+    gap: 12,
   },
   continueScanButton: {
-    backgroundColor: '#007AFF',
+    flex: 1,
+    backgroundColor: '#6c757d',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
   continueScanText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#28a745',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#94d3a2',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editModal: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 350,
+  },
+  editModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  editModalBarcode: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+    backgroundColor: '#f5f5f5',
+    padding: 8,
+    borderRadius: 8,
+  },
+  editQtyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  editQtyButton: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#007AFF',
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editQtyButtonText: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+  editQtyInput: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#333',
+    minWidth: 80,
+    textAlign: 'center',
+    marginHorizontal: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: '#007AFF',
+    paddingVertical: 8,
+  },
+  editModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  editCancelButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 10,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+  },
+  editCancelButtonText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '600',
+  },
+  editSaveButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 10,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+  },
+  editSaveButtonText: {
+    fontSize: 16,
+    color: '#fff',
     fontWeight: '600',
   },
 });

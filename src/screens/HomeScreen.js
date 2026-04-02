@@ -122,14 +122,14 @@ const HomeScreen = ({navigation}) => {
         </TouchableOpacity>
          <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => navigation.navigate('InventoryScan')}>
+          onPress={() => navigation.navigate('AllStocks')}>
           <Text style={styles.actionIcon}>➕</Text>
           <View style={styles.actionContent}>
-            <Text style={styles.actionTitle}>Add Inventory</Text>
+            <Text style={styles.actionTitle}>All Inventory</Text>
             <Text style={styles.actionSubtitle}>Add new items to inventory</Text>
           </View>
         </TouchableOpacity>
-
+    
       </View>
     </ScrollView>
   );

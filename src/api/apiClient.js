@@ -86,6 +86,12 @@ export const productAPI = {
   
 };
 
+export const inventoryAPI = {
+  saveInventory: data => apiClient.post('/save_inventory', data),
+  getAll: (page = 1) => apiClient.get(`/inventories?page=${page}`),
+  getById: id => apiClient.get(`/inventories/${id}`),
+};
+
 export const customerAPI = {
   // Get all customers
   getAll: () => apiClient.get('/cusname'),
