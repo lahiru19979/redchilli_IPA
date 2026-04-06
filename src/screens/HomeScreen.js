@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,12 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import {invoiceAPI} from '../api/apiClient';
-import {useAuth} from '../context/AuthContext';
+import { invoiceAPI } from '../api/apiClient';
+import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 
-const HomeScreen = ({navigation}) => {
-  const {user, getFullName} = useAuth();
+const HomeScreen = ({ navigation }) => {
+  const { user, getFullName } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,10 +42,11 @@ const HomeScreen = ({navigation}) => {
     return <LoadingSpinner message="Loading dashboard..." />;
   }
 
-  const StatCard = ({title, value, color, onPress}) => (
+  const StatCard = ({ title, value, color, onPress }) => (
     <TouchableOpacity
-      style={[styles.statCard, {borderLeftColor: color}]}
-      onPress={onPress}>
+      style={[styles.statCard, { borderLeftColor: color }]}
+      onPress={onPress}
+    >
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statTitle}>{title}</Text>
     </TouchableOpacity>
@@ -56,7 +57,8 @@ const HomeScreen = ({navigation}) => {
       style={styles.container}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }>
+      }
+    >
       <View style={styles.header}>
         {/* 👇 UPDATED: Use first_name or getFullName() */}
         <Text style={styles.greeting}>
@@ -91,10 +93,11 @@ const HomeScreen = ({navigation}) => {
 
       <View style={styles.quickActions}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
-        
+
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => navigation.navigate('CreateInvoice')}>
+          onPress={() => navigation.navigate('CreateInvoice')}
+        >
           <Text style={styles.actionIcon}>➕</Text>
           <View style={styles.actionContent}>
             <Text style={styles.actionTitle}>Create Invoice</Text>
@@ -104,7 +107,8 @@ const HomeScreen = ({navigation}) => {
 
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => navigation.navigate('BarcodeScan')}>
+          onPress={() => navigation.navigate('BarcodeScan')}
+        >
           <Text style={styles.actionIcon}>📷</Text>
           <View style={styles.actionContent}>
             <Text style={styles.actionTitle}>Scan Barcode</Text>
@@ -113,23 +117,38 @@ const HomeScreen = ({navigation}) => {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => navigation.navigate('CreateProduct')}>
+          onPress={() => navigation.navigate('CreateProduct')}
+        >
           <Text style={styles.actionIcon}>➕</Text>
           <View style={styles.actionContent}>
             <Text style={styles.actionTitle}>Create Product</Text>
             <Text style={styles.actionSubtitle}>Create a new product</Text>
           </View>
         </TouchableOpacity>
-         <TouchableOpacity
+        <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => navigation.navigate('AllStocks')}>
+          onPress={() => navigation.navigate('AllStocks')}
+        >
           <Text style={styles.actionIcon}>➕</Text>
           <View style={styles.actionContent}>
             <Text style={styles.actionTitle}>All Inventory</Text>
-            <Text style={styles.actionSubtitle}>Add new items to inventory</Text>
+            <Text style={styles.actionSubtitle}>
+              Add new items to inventory
+            </Text>
           </View>
         </TouchableOpacity>
-    
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('reports')}
+        >
+          <Text style={styles.actionIcon}>➕</Text>
+          <View style={styles.actionContent}>
+            <Text style={styles.actionTitle}>Reports</Text>
+            <Text style={styles.actionSubtitle}>
+              View detailed reports
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -169,7 +188,7 @@ const styles = StyleSheet.create({
     margin: '2%',
     borderLeftWidth: 4,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -201,7 +220,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,

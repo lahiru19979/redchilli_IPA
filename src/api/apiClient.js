@@ -92,6 +92,13 @@ export const inventoryAPI = {
   getById: id => apiClient.get(`/inventories/${id}`),
 };
 
+export const revAPI = {
+  getdailysales: () => apiClient.get('/daily-revenue'),
+  getRCRevenue: (filter) => apiClient.get(`/monthly-revenue?searchKey=${filter}`),
+  getDtfRevenue: () => apiClient.get(`/daily-revenue-dtf`),
+  getNotClosedInvoices: (filter) => apiClient.get(`/monthly-notclose-inv?searchKey=${filter}`),
+};
+
 export const customerAPI = {
   // Get all customers
   getAll: () => apiClient.get('/cusname'),
