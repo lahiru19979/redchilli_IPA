@@ -97,6 +97,8 @@ export const revAPI = {
   getRCRevenue: (filter) => apiClient.get(`/monthly-revenue?searchKey=${filter}`),
   getDtfRevenue: () => apiClient.get(`/daily-revenue-dtf`),
   getNotClosedInvoices: (filter) => apiClient.get(`/monthly-notclose-inv?searchKey=${filter}`),
+  getDegsignRevenue: () => apiClient.get(`/daily-revenue-design`),
+  getHeatpressRevenue: (filter) => apiClient.get(`/Heatpress-revenue?searchKey=${filter}`),
 };
 
 export const customerAPI = {

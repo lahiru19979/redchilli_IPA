@@ -6,7 +6,8 @@ import { Text, View } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 // Screens
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -42,6 +43,7 @@ const TabIcon = ({ name, focused }) => {
 };
 
 const MainTabs = () => {
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -52,8 +54,8 @@ const MainTabs = () => {
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: 'gray',
         tabBarStyle: {
-          height: 60,
-          paddingBottom: 8,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom || 8,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
@@ -73,7 +75,7 @@ const MainTabs = () => {
         component={HomeScreen}
         options={{ headerShown: false }}
       />
-      <Tab.Screen
+      {/* <Tab.Screen
         name="Invoice"
         component={InvoiceScreen}
         options={{ title: 'Invoices' }}
@@ -82,7 +84,7 @@ const MainTabs = () => {
         name="Product"
         component={productsScreen}
         options={{ title: 'Products' }}
-      />
+      /> */}
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
@@ -100,83 +102,90 @@ const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: '#007AFF',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        }}
-      >
-        {isAuthenticated ? (
-          <>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Stack.Navigator
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: '#007AFF',
+            },
+            headerTintColor: '#fff',
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
+          }}
+        >
+          {isAuthenticated ? (
+            <>
+              <Stack.Screen
+                name="MainTabs"
+                component={MainTabs}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="InvoiceDetail"
+                component={InvoiceDetailScreen}
+                options={{ title: 'Invoice Details' }}
+              />
+              <Stack.Screen
+                name="CreateInvoice"
+                component={CreateInvoiceScreen}
+                options={{ title: 'Create Invoice' }}
+              />
+              <Stack.Screen
+                name="Invoice"
+                component={InvoiceScreen}
+                options={{ title: 'Invoices' }}
+              />
+              <Stack.Screen
+                name="CreateProduct"
+                component={CreateProductScreen}
+                options={{ title: 'Create Product' }}
+              />
+              <Stack.Screen
+                name="AllProduct"
+                component={productsScreen}
+                options={{ title: 'All Products' }}
+              />
+              <Stack.Screen
+                name="BarcodeScan"
+                component={BarcodeScanScreen}
+                options={{
+                  headerShown: false,
+                  presentation: 'fullScreenModal',
+                }}
+              />
+              <Stack.Screen
+                name="InventoryScan"
+                component={InventoryScanScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="ScannedItems"
+                component={ScannedItemsScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="AllStocks"
+                component={AllStocksScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="reports"
+                component={revenueScreen}
+                options={{ headerShown: false }}
+              />
+            </>
+          ) : (
             <Stack.Screen
-              name="MainTabs"
-              component={MainTabs}
+              name="Login"
+              component={LoginScreen}
               options={{ headerShown: false }}
             />
-            <Stack.Screen
-              name="InvoiceDetail"
-              component={InvoiceDetailScreen}
-              options={{ title: 'Invoice Details' }}
-            />
-            <Stack.Screen
-              name="CreateInvoice"
-              component={CreateInvoiceScreen}
-              options={{ title: 'Create Invoice' }}
-            />
-            <Stack.Screen
-              name="CreateProduct"
-              component={CreateProductScreen}
-              options={{ title: 'Create Product' }}
-            />
-            <Stack.Screen
-              name="AllProduct"
-              component={productsScreen}
-              options={{ title: 'All Products' }}
-            />
-            <Stack.Screen
-              name="BarcodeScan"
-              component={BarcodeScanScreen}
-              options={{
-                headerShown: false,
-                presentation: 'fullScreenModal',
-              }}
-            />
-            <Stack.Screen
-              name="InventoryScan"
-              component={InventoryScanScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="ScannedItems"
-              component={ScannedItemsScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="AllStocks"
-              component={AllStocksScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="reports"
-              component={revenueScreen}
-              options={{ headerShown: false }}
-            />
-          </>
-        ) : (
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 };
 

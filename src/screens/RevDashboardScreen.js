@@ -1,5 +1,4 @@
-
-import React, {useState, useEffect, useCallback} from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,31 +8,39 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import {revAPI} from '../api/apiClient';
+import { revAPI } from '../api/apiClient';
 import SalesChart from '../components/SalesChart';
 import MonthlyRevenueChart from '../components/MonthlyRevenueChart';
 import NotClosedInvoicesChart from '../components/NotClosedInvoicesChart';
+import HeatpressRevenueChart from '../components/HeatpressRevenueChart';
 
 const TABS = [
-  {id: 'daily', label: '📊 Daily Sales'},
-  {id: 'dtf', label: '🎨 DTF Revenue'},
-  {id: 'monthly', label: '📈 Monthly Revenue'},
-  {id: 'notclosed', label: '📋 Not Closed'},
+  { id: 'daily', label: '📊 Total Revenue' },
+  { id: 'dtf', label: '🎨 DTF Revenue' },
+  { id: 'monthly', label: '📈 RC Revenue' },
+  { id: 'notclosed', label: '⏳ Not Closed Invoices' },
+  { id: 'degsign', label: '📋 Degsign Revenue' },
+ { id: 'heatpress', label: '🔥 Heatpress Revenue' },
 ];
 
-const RevDashboardScreen = ({navigation}) => {
+const RevDashboardScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('daily');
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Daily Sales Data
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // DTF Revenue Data
   const [dtfData, setDtfData] = useState(null);
   const [dtfLoading, setDtfLoading] = useState(true);
   const [dtfError, setDtfError] = useState(null);
+
+  // degsign revanue data
+  const [degsignData, setDegsignData] = useState(null);
+  const [degsignLoading, setDegsignLoading] = useState(true);
+  const [degsignError, setDegsignError] = useState(null);
 
   // Fetch Daily Sales Data
   const fetchDashboardData = async (refresh = false) => {
@@ -69,7 +76,10 @@ const RevDashboardScreen = ({navigation}) => {
       setDtfError(null);
 
       const response = await revAPI.getDtfRevenue();
-      console.log('🎨 DTF Revenue Response:', JSON.stringify(response.data, null, 2));
+      console.log(
+        '🎨 DTF Revenue Response:',
+        JSON.stringify(response.data, null, 2),
+      );
 
       // Handle different response structures
       let data = null;
@@ -101,31 +111,84 @@ const RevDashboardScreen = ({navigation}) => {
     }
   };
 
+  const fetchDegsignData = async () => {
+    try {
+      setDegsignLoading(true);
+      setDegsignError(null);
+      const response = await revAPI.getDegsignRevenue();
+      console.log(
+        '🎨 Degsign Revenue Response:',
+        JSON.stringify(response.data, null, 2),
+      );
+
+      // Handle different response structures
+      let data = null;
+
+      if (response.data.status === 'success' && response.data.data) {
+        data = response.data.data;
+      } else if (response.data.labels && response.data.values) {
+        data = response.data;
+      } else if (response.data.data) {
+        data = response.data.data;
+      } else {
+        data = response.data;
+      }
+
+      console.log('🎨 Parsed Degsign Data:', data);
+
+      if (data && data.labels && data.values) {
+        setDegsignData(data);
+      } else {
+        console.error('❌ Invalid Degsign data structure:', data);
+        setDegsignError('Invalid data format');
+      }
+    } catch (err) {
+      console.error('❌ Fetch Degsign revenue error:', err);
+      console.error('❌ Error details:', err.response?.data || err.message);
+      setDegsignError('Failed to load Degsign revenue');
+    } finally {
+      setDegsignLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
     fetchDtfData();
+    fetchDegsignData();
   }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchDashboardData(true);
       fetchDtfData();
+      fetchDegsignData();
     });
     return unsubscribe;
   }, [navigation]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    Promise.all([fetchDashboardData(true), fetchDtfData()]).finally(() => {
+    Promise.all([
+      fetchDashboardData(true),
+      fetchDtfData(),
+      fetchDegsignData(),
+    ]).finally(() => {
       setRefreshing(false);
     });
   }, []);
 
   // Calculate totals for daily chart
-  const totalSales = chartData?.values?.reduce((sum, val) => sum + parseFloat(val || 0), 0) || 0;
+  const totalSales =
+    chartData?.values?.reduce((sum, val) => sum + parseFloat(val || 0), 0) || 0;
 
   // Calculate totals for DTF chart
-  const totalDtfSales = dtfData?.values?.reduce((sum, val) => sum + parseFloat(val || 0), 0) || 0;
+  const totalDtfSales =
+    dtfData?.values?.reduce((sum, val) => sum + parseFloat(val || 0), 0) || 0;
+
+  // Calculate totals for Degsign chart
+  const totalDegsignSales =
+    degsignData?.values?.reduce((sum, val) => sum + parseFloat(val || 0), 0) ||
+    0;
 
   // Render error state
   const renderError = (message, onRetry) => (
@@ -139,7 +202,7 @@ const RevDashboardScreen = ({navigation}) => {
   );
 
   // Render empty state
-  const renderEmpty = (message) => (
+  const renderEmpty = message => (
     <View style={styles.emptyContainer}>
       <Text style={styles.emptyIcon}>📭</Text>
       <Text style={styles.emptyText}>{message}</Text>
@@ -166,7 +229,7 @@ const RevDashboardScreen = ({navigation}) => {
       {/* Quick Stats Cards - Only show on Daily tab */}
       {activeTab === 'daily' && (
         <View style={styles.quickStatsContainer}>
-          <View style={[styles.quickStatCard, {backgroundColor: '#E3F2FD'}]}>
+          <View style={[styles.quickStatCard, { backgroundColor: '#E3F2FD' }]}>
             <Text style={styles.quickStatIcon}>💰</Text>
             <Text style={styles.quickStatValue}>
               Rs. {totalSales.toLocaleString()}
@@ -174,7 +237,7 @@ const RevDashboardScreen = ({navigation}) => {
             <Text style={styles.quickStatLabel}>Total Sales</Text>
           </View>
 
-          <View style={[styles.quickStatCard, {backgroundColor: '#E8F5E9'}]}>
+          <View style={[styles.quickStatCard, { backgroundColor: '#E8F5E9' }]}>
             <Text style={styles.quickStatIcon}>📊</Text>
             <Text style={styles.quickStatValue}>
               {chartData?.labels?.length || 0}
@@ -182,12 +245,14 @@ const RevDashboardScreen = ({navigation}) => {
             <Text style={styles.quickStatLabel}>Days Active</Text>
           </View>
 
-          <View style={[styles.quickStatCard, {backgroundColor: '#FFF3E0'}]}>
+          <View style={[styles.quickStatCard, { backgroundColor: '#FFF3E0' }]}>
             <Text style={styles.quickStatIcon}>📈</Text>
             <Text style={styles.quickStatValue}>
               Rs.{' '}
               {chartData?.values
-                ? Math.max(...chartData.values.map(v => parseFloat(v || 0))).toLocaleString()
+                ? Math.max(
+                    ...chartData.values.map(v => parseFloat(v || 0)),
+                  ).toLocaleString()
                 : 0}
             </Text>
             <Text style={styles.quickStatLabel}>Best Day</Text>
@@ -198,7 +263,7 @@ const RevDashboardScreen = ({navigation}) => {
       {/* Quick Stats Cards - Only show on DTF tab */}
       {activeTab === 'dtf' && (
         <View style={styles.quickStatsContainer}>
-          <View style={[styles.quickStatCard, {backgroundColor: '#FCE4EC'}]}>
+          <View style={[styles.quickStatCard, { backgroundColor: '#FCE4EC' }]}>
             <Text style={styles.quickStatIcon}>🎨</Text>
             <Text style={styles.quickStatValue}>
               Rs. {totalDtfSales.toLocaleString()}
@@ -206,7 +271,7 @@ const RevDashboardScreen = ({navigation}) => {
             <Text style={styles.quickStatLabel}>Total DTF</Text>
           </View>
 
-          <View style={[styles.quickStatCard, {backgroundColor: '#F3E5F5'}]}>
+          <View style={[styles.quickStatCard, { backgroundColor: '#F3E5F5' }]}>
             <Text style={styles.quickStatIcon}>📊</Text>
             <Text style={styles.quickStatValue}>
               {dtfData?.labels?.length || 0}
@@ -214,12 +279,47 @@ const RevDashboardScreen = ({navigation}) => {
             <Text style={styles.quickStatLabel}>Days Active</Text>
           </View>
 
-          <View style={[styles.quickStatCard, {backgroundColor: '#E8EAF6'}]}>
+          <View style={[styles.quickStatCard, { backgroundColor: '#E8EAF6' }]}>
             <Text style={styles.quickStatIcon}>📈</Text>
             <Text style={styles.quickStatValue}>
               Rs.{' '}
               {dtfData?.values
-                ? Math.max(...dtfData.values.map(v => parseFloat(v || 0))).toLocaleString()
+                ? Math.max(
+                    ...dtfData.values.map(v => parseFloat(v || 0)),
+                  ).toLocaleString()
+                : 0}
+            </Text>
+            <Text style={styles.quickStatLabel}>Best Day</Text>
+          </View>
+        </View>
+      )}
+
+      {activeTab === 'degsign' && (
+        <View style={styles.quickStatsContainer}>
+          <View style={[styles.quickStatCard, { backgroundColor: '#FCE4EC' }]}>
+            <Text style={styles.quickStatIcon}>🎨</Text>
+            <Text style={styles.quickStatValue}>
+              Rs. {totalDegsignSales.toLocaleString()}
+            </Text>
+            <Text style={styles.quickStatLabel}>Total Degsign</Text>
+          </View>
+
+          <View style={[styles.quickStatCard, { backgroundColor: '#F3E5F5' }]}>
+            <Text style={styles.quickStatIcon}>📊</Text>
+            <Text style={styles.quickStatValue}>
+              {degsignData?.labels?.length || 0}
+            </Text>
+            <Text style={styles.quickStatLabel}>Days Active</Text>
+          </View>
+
+          <View style={[styles.quickStatCard, { backgroundColor: '#E8EAF6' }]}>
+            <Text style={styles.quickStatIcon}>📈</Text>
+            <Text style={styles.quickStatValue}>
+              Rs.{' '}
+              {degsignData?.values
+                ? Math.max(
+                    ...degsignData.values.map(v => parseFloat(v || 0)),
+                  ).toLocaleString()
                 : 0}
             </Text>
             <Text style={styles.quickStatLabel}>Best Day</Text>
@@ -228,22 +328,22 @@ const RevDashboardScreen = ({navigation}) => {
       )}
 
       {/* Tab Switcher */}
-      <View style={[
-        styles.tabContainer,
-        (activeTab === 'monthly' || activeTab === 'notclosed') && styles.tabContainerMonthly
-      ]}>
-        <ScrollView 
-          horizontal 
+      <View
+        style={[
+          styles.tabContainer,
+          (activeTab === 'monthly' || activeTab === 'notclosed' || activeTab === 'heatpress') &&
+            styles.tabContainerMonthly,
+        ]}
+      >
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabScrollContent}
         >
-          {TABS.map((tab) => (
+          {TABS.map(tab => (
             <TouchableOpacity
               key={tab.id}
-              style={[
-                styles.tab,
-                activeTab === tab.id && styles.tabActive,
-              ]}
+              style={[styles.tab, activeTab === tab.id && styles.tabActive]}
               onPress={() => setActiveTab(tab.id)}
             >
               <Text
@@ -269,42 +369,47 @@ const RevDashboardScreen = ({navigation}) => {
             </View>
           ) : error ? (
             renderError(error, fetchDashboardData)
-          ) : !chartData || !chartData.labels || chartData.labels.length === 0 ? (
+          ) : !chartData ||
+            !chartData.labels ||
+            chartData.labels.length === 0 ? (
             renderEmpty('No daily sales data available')
           ) : (
             <>
-              <SalesChart 
-                data={chartData} 
-                title="Daily Sales" 
+              <SalesChart
+                data={chartData}
+                title="Daily Sales"
                 barColor="#007AFF"
                 highColor="#28a745"
                 lowColor="#dc3545"
               />
-              
+
               {/* Recent Sales List */}
               <View style={styles.recentSection}>
                 <Text style={styles.recentTitle}>Recent Sales</Text>
-                {chartData?.labels?.slice(-5).reverse().map((label, index) => {
-                  const valueIndex = chartData.labels.length - 1 - index;
-                  const value = parseFloat(chartData.values[valueIndex] || 0);
-                  const isHigh = value > (totalSales / chartData.values.length);
+                {chartData?.labels
+                  ?.slice(-5)
+                  .reverse()
+                  .map((label, index) => {
+                    const valueIndex = chartData.labels.length - 1 - index;
+                    const value = parseFloat(chartData.values[valueIndex] || 0);
+                    const isHigh = value > totalSales / chartData.values.length;
 
-                  return (
-                    <View key={index} style={styles.recentItem}>
-                      <View style={styles.recentLeft}>
-                        <Text style={styles.recentDateText}>{label}</Text>
+                    return (
+                      <View key={index} style={styles.recentItem}>
+                        <View style={styles.recentLeft}>
+                          <Text style={styles.recentDateText}>{label}</Text>
+                        </View>
+                        <Text
+                          style={[
+                            styles.recentValue,
+                            { color: isHigh ? '#28a745' : '#666' },
+                          ]}
+                        >
+                          Rs. {value.toLocaleString()}
+                        </Text>
                       </View>
-                      <Text
-                        style={[
-                          styles.recentValue,
-                          {color: isHigh ? '#28a745' : '#666'},
-                        ]}
-                      >
-                        Rs. {value.toLocaleString()}
-                      </Text>
-                    </View>
-                  );
-                })}
+                    );
+                  })}
               </View>
             </>
           )}
@@ -325,38 +430,101 @@ const RevDashboardScreen = ({navigation}) => {
             renderEmpty('No DTF revenue data available')
           ) : (
             <>
-              <SalesChart 
-                data={dtfData} 
-                title="DTF Revenue" 
+              <SalesChart
+                data={dtfData}
+                title="DTF Revenue"
                 barColor="#9C27B0"
                 highColor="#4CAF50"
                 lowColor="#FF5722"
               />
-              
+
               {/* Recent DTF Sales List */}
               <View style={styles.recentSection}>
                 <Text style={styles.recentTitle}>Recent DTF Sales</Text>
-                {dtfData?.labels?.slice(-5).reverse().map((label, index) => {
-                  const valueIndex = dtfData.labels.length - 1 - index;
-                  const value = parseFloat(dtfData.values[valueIndex] || 0);
-                  const isHigh = value > (totalDtfSales / dtfData.values.length);
+                {dtfData?.labels
+                  ?.slice(-5)
+                  .reverse()
+                  .map((label, index) => {
+                    const valueIndex = dtfData.labels.length - 1 - index;
+                    const value = parseFloat(dtfData.values[valueIndex] || 0);
+                    const isHigh =
+                      value > totalDtfSales / dtfData.values.length;
 
-                  return (
-                    <View key={index} style={styles.recentItem}>
-                      <View style={styles.recentLeft}>
-                        <Text style={styles.recentDateText}>{label}</Text>
+                    return (
+                      <View key={index} style={styles.recentItem}>
+                        <View style={styles.recentLeft}>
+                          <Text style={styles.recentDateText}>{label}</Text>
+                        </View>
+                        <Text
+                          style={[
+                            styles.recentValue,
+                            { color: isHigh ? '#9C27B0' : '#666' },
+                          ]}
+                        >
+                          Rs. {value.toLocaleString()}
+                        </Text>
                       </View>
-                      <Text
-                        style={[
-                          styles.recentValue,
-                          {color: isHigh ? '#9C27B0' : '#666'},
-                        ]}
-                      >
-                        Rs. {value.toLocaleString()}
-                      </Text>
-                    </View>
-                  );
-                })}
+                    );
+                  })}
+              </View>
+            </>
+          )}
+        </>
+      )}
+
+      {activeTab === 'degsign' && (
+        <>
+          {degsignLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#9C27B0" />
+              <Text style={styles.loadingText}>Loading Degsign chart...</Text>
+            </View>
+          ) : degsignError ? (
+            renderError(degsignError, fetchDtfData)
+          ) : !degsignData ||
+            !degsignData.labels ||
+            degsignData.labels.length === 0 ? (
+            renderEmpty('No Degsign revenue data available')
+          ) : (
+            <>
+              <SalesChart
+                data={degsignData}
+                title="Degsign Revenue"
+                barColor="#9C27B0"
+                highColor="#4CAF50"
+                lowColor="#FF5722"
+              />
+
+              {/* Recent Degsign Sales List */}
+              <View style={styles.recentSection}>
+                <Text style={styles.recentTitle}>Recent Degsign Sales</Text>
+                {degsignData?.labels
+                  ?.slice(-5)
+                  .reverse()
+                  .map((label, index) => {
+                    const valueIndex = degsignData.labels.length - 1 - index;
+                    const value = parseFloat(
+                      degsignData.values[valueIndex] || 0,
+                    );
+                    const isHigh =
+                      value > totalDtfSales / degsignData.values.length;
+
+                    return (
+                      <View key={index} style={styles.recentItem}>
+                        <View style={styles.recentLeft}>
+                          <Text style={styles.recentDateText}>{label}</Text>
+                        </View>
+                        <Text
+                          style={[
+                            styles.recentValue,
+                            { color: isHigh ? '#9C27B0' : '#666' },
+                          ]}
+                        >
+                          Rs. {value.toLocaleString()}
+                        </Text>
+                      </View>
+                    );
+                  })}
               </View>
             </>
           )}
@@ -368,8 +536,11 @@ const RevDashboardScreen = ({navigation}) => {
         <MonthlyRevenueChart title="Monthly Revenue" />
       )}
 
-       {activeTab === 'notclosed' && (
+      {activeTab === 'notclosed' && (
         <NotClosedInvoicesChart title="Not Closed Invoices" />
+      )}
+      {activeTab === 'heatpress' && ( 
+        <HeatpressRevenueChart title="Heatpress Revenue" />
       )}
 
       <View style={styles.bottomPadding} />
@@ -411,7 +582,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -457,7 +628,7 @@ const styles = StyleSheet.create({
   tabActive: {
     backgroundColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
@@ -480,7 +651,7 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
@@ -500,7 +671,7 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
@@ -536,7 +707,7 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
@@ -559,7 +730,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,

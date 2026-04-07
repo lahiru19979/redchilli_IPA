@@ -46,9 +46,24 @@ const HomeScreen = ({ navigation }) => {
     <TouchableOpacity
       style={[styles.statCard, { borderLeftColor: color }]}
       onPress={onPress}
+      activeOpacity={0.8}
     >
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statTitle}>{title}</Text>
+    </TouchableOpacity>
+  );
+
+  const ActionCard = ({ icon, title, subtitle, color, onPress }) => (
+    <TouchableOpacity
+      style={[styles.actionCard, { borderLeftColor: color }]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <Text style={styles.actionIcon}>{icon}</Text>
+      <View style={styles.actionContent}>
+        <Text style={styles.actionTitle}>{title}</Text>
+        <Text style={styles.actionSubtitle}>{subtitle}</Text>
+      </View>
     </TouchableOpacity>
   );
 
@@ -60,95 +75,55 @@ const HomeScreen = ({ navigation }) => {
       }
     >
       <View style={styles.header}>
-        {/* 👇 UPDATED: Use first_name or getFullName() */}
         <Text style={styles.greeting}>
           Hello, {user?.first_name || 'User'}! 👋
         </Text>
         <Text style={styles.date}>{new Date().toLocaleDateString()}</Text>
       </View>
 
-      <View style={styles.statsContainer}>
-        <StatCard
-          title="Total Invoices"
-          value={dashboard?.total_invoices || 0}
-          color="#007AFF"
-          onPress={() => navigation.navigate('Invoice')}
-        />
-        <StatCard
-          title="Pending"
-          value={dashboard?.pending_invoices || 0}
-          color="#FF9800"
-        />
-        <StatCard
-          title="Paid"
-          value={dashboard?.paid_invoices || 0}
-          color="#4CAF50"
-        />
-        <StatCard
-          title="Total Revenue"
-          value={`$${dashboard?.total_revenue?.toFixed(2) || '0.00'}`}
-          color="#9C27B0"
-        />
-      </View>
+      
 
-      <View style={styles.quickActions}>
+      {/* Quick Actions as Cards */}
+      <View style={styles.actionsContainer}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
 
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('CreateInvoice')}
-        >
-          <Text style={styles.actionIcon}>➕</Text>
-          <View style={styles.actionContent}>
-            <Text style={styles.actionTitle}>Create Invoice</Text>
-            <Text style={styles.actionSubtitle}>Create a new invoice</Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('BarcodeScan')}
-        >
-          <Text style={styles.actionIcon}>📷</Text>
-          <View style={styles.actionContent}>
-            <Text style={styles.actionTitle}>Scan Barcode</Text>
-            <Text style={styles.actionSubtitle}>Add product by scanning</Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('CreateProduct')}
-        >
-          <Text style={styles.actionIcon}>➕</Text>
-          <View style={styles.actionContent}>
-            <Text style={styles.actionTitle}>Create Product</Text>
-            <Text style={styles.actionSubtitle}>Create a new product</Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('AllStocks')}
-        >
-          <Text style={styles.actionIcon}>➕</Text>
-          <View style={styles.actionContent}>
-            <Text style={styles.actionTitle}>All Inventory</Text>
-            <Text style={styles.actionSubtitle}>
-              Add new items to inventory
-            </Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('reports')}
-        >
-          <Text style={styles.actionIcon}>➕</Text>
-          <View style={styles.actionContent}>
-            <Text style={styles.actionTitle}>Reports</Text>
-            <Text style={styles.actionSubtitle}>
-              View detailed reports
-            </Text>
-          </View>
-        </TouchableOpacity>
+        <View style={styles.actionCardsGrid}>
+          <ActionCard
+            icon="🧾"
+            title="All Invoice"
+            subtitle="View all invoices"
+            color="#007AFF"
+            onPress={() => navigation.navigate('Invoice')}
+          />
+          <ActionCard
+            icon="📷"
+            title="Scan Barcode for Invoice"
+            subtitle="Add product to invoice"
+            color="#FF5722"
+            onPress={() => navigation.navigate('BarcodeScan')}
+          />
+          <ActionCard
+            icon="📦"
+            title="Create Product"
+            subtitle="Add a new product"
+            color="#4CAF50"
+            onPress={() => navigation.navigate('CreateProduct')}
+          />
+          <ActionCard
+            icon="🗃️"
+            title="All Inventory"
+            subtitle="View & manage stock"
+            color="#FF9800"
+            onPress={() => navigation.navigate('AllStocks')}
+          />
+          <ActionCard
+            icon="📊"
+            title="Revenue Reports"
+            subtitle="View detailed reports"
+            color="#9C27B0"
+            onPress={() => navigation.navigate('reports')}
+          />
+        </View>
       </View>
     </ScrollView>
   );
@@ -174,11 +149,13 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     marginTop: 4,
   },
+
+  // Stat Cards
   statsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    padding: 12,
-    marginTop: -20,
+    padding: 14,
+    marginTop: 20,
   },
   statCard: {
     backgroundColor: '#fff',
@@ -203,7 +180,9 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
   },
-  quickActions: {
+
+  // Action Cards
+  actionsContainer: {
     padding: 16,
   },
   sectionTitle: {
@@ -212,33 +191,40 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 12,
   },
-  actionButton: {
+  actionCardsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  actionCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    width: '48%',
+    marginBottom: 14,
+    borderLeftWidth: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   actionIcon: {
-    fontSize: 32,
-    marginRight: 16,
+    fontSize: 26,
+    marginRight: 10,
   },
   actionContent: {
     flex: 1,
   },
   actionTitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
     color: '#333',
   },
   actionSubtitle: {
-    fontSize: 14,
+    fontSize: 11,
     color: '#666',
     marginTop: 2,
   },
