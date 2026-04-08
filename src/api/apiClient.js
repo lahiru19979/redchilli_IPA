@@ -84,7 +84,7 @@ export const productAPI = {
   getCategoriesByLevel3: level2Id =>
     apiClient.get(`/categories/level3?level2_id=${level2Id}`),
   getFilters: parentId => apiClient.get(`/filters?parent_id=${parentId}`),
-  
+  getAllproducts: (page = 1) => apiClient.get(`/all_products?page=${page}`),
 };
 
 export const inventoryAPI = {
@@ -95,11 +95,13 @@ export const inventoryAPI = {
 
 export const revAPI = {
   getdailysales: () => apiClient.get('/daily-revenue'),
-  getRCRevenue: (filter) => apiClient.get(`/monthly-revenue?searchKey=${filter}`),
+  getRCRevenue: filter => apiClient.get(`/monthly-revenue?searchKey=${filter}`),
   getDtfRevenue: () => apiClient.get(`/daily-revenue-dtf`),
-  getNotClosedInvoices: (filter) => apiClient.get(`/monthly-notclose-inv?searchKey=${filter}`),
+  getNotClosedInvoices: filter =>
+    apiClient.get(`/monthly-notclose-inv?searchKey=${filter}`),
   getDegsignRevenue: () => apiClient.get(`/daily-revenue-design`),
-  getHeatpressRevenue: (filter) => apiClient.get(`/Heatpress-revenue?searchKey=${filter}`),
+  getHeatpressRevenue: filter =>
+    apiClient.get(`/Heatpress-revenue?searchKey=${filter}`),
 };
 
 export const customerAPI = {

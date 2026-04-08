@@ -22,6 +22,7 @@ import InventoryScanScreen from '../screens/InventoryScanScreen';
 import ScannedItemsScreen from '../screens/ScannedItemsScreen';
 import AllStocksScreen from '../screens/AllstocksScreen';
 import revenueScreen from '../screens/RevDashboardScreen';
+import AllProductScreen from '../screens/AllProductScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -173,6 +174,11 @@ const AppNavigator = () => {
               <Stack.Screen
                 name="reports"
                 component={revenueScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="AllProducts_screen"
+                component={AllProductScreen}
                 options={{ headerShown: false }}
               />
             </>

@@ -32,7 +32,7 @@ const ACTION_CARDS = [
     title: 'Products',
     subtitle: 'Add a new product',
     color: '#4CAF50',
-    screen: 'CreateProduct',
+    screen: 'AllProducts_screen',
     permission: 'Products Section',
   },
   {
