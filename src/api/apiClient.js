@@ -49,6 +49,7 @@ export const authAPI = {
   getProfile: () => apiClient.get('/profile'),
 
   updateProfile: data => apiClient.put('/profile', data),
+  getPermissions: () => apiClient.get('/user-permissions'),
 };
 
 export const invoiceAPI = {
