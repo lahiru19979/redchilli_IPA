@@ -279,9 +279,9 @@ export const AuthProvider = ({ children }) => {
    * Check if user is admin (role_id 1)
    * @returns {boolean}
    */
-  const isAdmin = () => {
-    return user?.role_id == 1;
-  };
+  // const isAdmin = () => {
+  //   return user?.role_id == 1;
+  // };
 
   /**
    * Refresh permissions from server
@@ -324,7 +324,7 @@ export const AuthProvider = ({ children }) => {
         getFullName,
         hasPermission,
         hasAllPermissions,
-        isAdmin,
+        // isAdmin,
         refreshPermissions,
       }}>
       {children}

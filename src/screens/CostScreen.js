@@ -1,4 +1,4 @@
-// screens/HomeScreen.js
+
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -10,98 +10,70 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { invoiceAPI } from '../api/apiClient';
-import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 
-// Define action cards with required permissions
-// Use the EXACT permission names from your database
 const ACTION_CARDS = [
   {
-    id: 'all_invoices',
-    icon: '🧾',
-    title: 'Invoices',
-    subtitle: 'View & create invoices',
+    id: 'all_costtypes',
+    icon: '💵',
+    title: 'Cost Types',
+    subtitle: 'View & create cost types',
     color: '#007AFF',
-    screen: 'Invoice',
-    permission: 'Invoice module',
+    screen: 'AllCostTypes_screen',
+    // permission: 'Invoice module',
   },
- 
   {
-    id: 'create_product',
-    icon: '📦',
-    title: 'Products',
-    subtitle: 'Add a new product',
+    id: 'all_costgroups',
+    icon: '💵',
+    title: 'Cost Groups',
+    subtitle: 'View & create cost groups',
     color: '#4CAF50',
-    screen: 'AllProducts_screen',
-    permission: 'Products Section',
+    screen: 'AllCostGroups_screen',
+    // permission: 'Products Section',
   },
   {
-    id: 'all_inventory',
-    icon: '🗃️',
-    title: 'Inventories',
-    subtitle: 'View & manage stock',
+    id: 'all_costdescriptions',
+    icon: '💵',
+    title: 'Cost Descriptions',
+    subtitle: 'View & create cost descriptions',
     color: '#FF9800',
-    screen: 'AllStocks',
-    permission: 'Inventory module',
-  },
-  {
-    id: 'revenue_reports',
-    icon: '📊',
-    title: 'Revenue Reports',
-    subtitle: 'View detailed reports',
-    color: '#9C27B0',
-    screen: 'reports',
-    permission: 'Revanue module',
-  },
-  {
-    id: 'cost_module',
-    icon: '💰',
-    title: 'Cost Module',
-    subtitle: 'View detailed cost Module',
-    color: '#27b02e',
-    screen: 'Cost',
-    permission: 'Cost module',
+    screen: 'AllCostDescriptions_screen',
+    // permission: 'Inventory module',
   },
 ];
 
-// Stat cards configuration
 const STAT_CARDS = [
   {
-    id: 'today_sales',
-    title: "Today's Sales",
-    key: 'today_sales',
-    prefix: 'Rs ',
-    color: '#4CAF50',
-    permission: 'view_reports',
+    id: 'total_invoices',
+    title: 'Total Invoices',
+    key: 'total_invoices',
+    color: '#007AFF',
+    prefix: '',
   },
   {
     id: 'total_products',
     title: 'Total Products',
     key: 'total_products',
+    color: '#4CAF50',
     prefix: '',
-    color: '#2196F3',
-    permission: 'view_products',
   },
   {
-    id: 'pending_orders',
-    title: 'Pending Orders',
-    key: 'pending_orders',
-    prefix: '',
+    id: 'total_stock',
+    title: 'Total Stock',
+    key: 'total_stock',
     color: '#FF9800',
-    permission: 'view_invoices',
+    prefix: '',
   },
   {
-    id: 'total_customers',
-    title: 'Total Customers',
-    key: 'total_customers',
-    prefix: '',
+    id: 'total_revenue',
+    title: 'Total Revenue',
+    key: 'total_revenue',
     color: '#9C27B0',
-    permission: 'view_customers',
+    prefix: '$',
   },
 ];
- 
-const HomeScreen = ({ navigation }) => {
-  const { user, hasPermission, refreshPermissions, isAdmin } = useAuth();
+
+const CostScreen = ({ navigation }) => {
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -121,43 +93,16 @@ const HomeScreen = ({ navigation }) => {
     fetchDashboard();
   }, []);
 
-  useEffect(() => {
-  console.table({
-    'User ID': user?.id,
-    'Name': `${user?.first_name} ${user?.last_name}`,
-    'Email': user?.email,
-    'role': user?.role_id,
-    'Is Admin': isAdmin(),
-    
-  });
-},);
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([
-      fetchDashboard(),
-      refreshPermissions(),
-    ]);
+    await fetchDashboard();
     setRefreshing(false);
   }, []);
-
-  // Filter action cards based on permissions
-  const visibleActionCards = ACTION_CARDS.filter(card => {
-    if (!card.permission) return true;
-    return hasPermission(card.permission);
-  });
-
-  // Filter stat cards based on permissions
-  const visibleStatCards = STAT_CARDS.filter(card => {
-    if (!card.permission) return true;
-    return hasPermission(card.permission);
-  });
 
   if (loading) {
     return <LoadingSpinner message="Loading dashboard..." />;
   }
 
-  // Stat Card Component
   const StatCard = ({ title, value, color, prefix = '' }) => (
     <View style={[styles.statCard, { borderLeftColor: color }]}>
       <Text style={styles.statValue}>
@@ -167,7 +112,6 @@ const HomeScreen = ({ navigation }) => {
     </View>
   );
 
-  // Action Card Component
   const ActionCard = ({ icon, title, subtitle, color, onPress }) => (
     <TouchableOpacity
       style={[styles.actionCard, { borderLeftColor: color }]}
@@ -189,27 +133,12 @@ const HomeScreen = ({ navigation }) => {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={styles.greeting}>
-            Hello, {user?.first_name || 'User'}! 👋
-          </Text>
-          <Text style={styles.date}>{new Date().toLocaleDateString()}</Text>
-          {isAdmin() && (
-            <View style={styles.adminBadge}>
-              <Text style={styles.adminBadgeText}>Admin</Text>
-            </View>
-          )}
-        </View>
-      </View>
-
       {/* Stats Section */}
-      {dashboard && visibleStatCards.length > 0 && (
+      {dashboard && (
         <View style={styles.statsContainer}>
           <Text style={styles.sectionTitle}>Overview</Text>
           <View style={styles.statsGrid}>
-            {visibleStatCards.map(card => (
+            {STAT_CARDS.map(card => (
               <StatCard
                 key={card.id}
                 title={card.title}
@@ -226,9 +155,9 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.actionsContainer}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
 
-        {visibleActionCards.length > 0 ? (
+        {ACTION_CARDS.length > 0 ? (
           <View style={styles.actionCardsGrid}>
-            {visibleActionCards.map(card => (
+            {ACTION_CARDS.map(card => (
               <ActionCard
                 key={card.id}
                 icon={card.icon}
@@ -243,13 +172,12 @@ const HomeScreen = ({ navigation }) => {
           <View style={styles.noPermissionsContainer}>
             <Text style={styles.noPermissionsIcon}>🔒</Text>
             <Text style={styles.noPermissionsText}>
-              No actions available.{'\n'}Please contact your administrator.
+              No actions available. Please contact your administrator.
             </Text>
           </View>
         )}
       </View>
 
-      {/* Bottom Spacing */}
       <View style={styles.bottomSpacing} />
     </ScrollView>
   );
@@ -260,54 +188,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  
-  // Header Styles
-  header: {
-    backgroundColor: '#007AFF',
-    padding: 24,
-    paddingTop: 50,
-    paddingBottom: 30,
-  },
-  headerContent: {
-    position: 'relative',
-  },
-  greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  date: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
-  },
-  adminBadge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: '#FFD700',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  adminBadgeText: {
-    color: '#333',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-
-  // Section Title
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
     marginBottom: 12,
   },
-
-  // Stats Styles
   statsContainer: {
     padding: 16,
-    marginTop: -20,
+    marginTop: 16,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -337,8 +226,6 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
   },
-
-  // Action Cards Styles
   actionsContainer: {
     padding: 16,
   },
@@ -379,8 +266,6 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
   },
-
-  // No Permissions Styles
   noPermissionsContainer: {
     padding: 40,
     alignItems: 'center',
@@ -402,11 +287,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
-
-  // Bottom Spacing
   bottomSpacing: {
     height: 30,
   },
 });
 
-export default HomeScreen;
+export default CostScreen;
