@@ -101,7 +101,7 @@ const STAT_CARDS = [
 ];
  
 const HomeScreen = ({ navigation }) => {
-  const { user, hasPermission, refreshPermissions, isAdmin } = useAuth();
+  const { user, hasPermission, refreshPermissions, isAdmin, permissions } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -116,7 +116,8 @@ const HomeScreen = ({ navigation }) => {
       setLoading(false);
     }
   };
-
+console.log('Permissions:', permissions);
+console.log('Can access Invoice module:', hasPermission('Invoice module'));
   useEffect(() => {
     fetchDashboard();
   }, []);
@@ -127,8 +128,8 @@ const HomeScreen = ({ navigation }) => {
     'Name': `${user?.first_name} ${user?.last_name}`,
     'Email': user?.email,
     'role': user?.role_id,
-    'Is Admin': isAdmin(),
-    
+    'Permissions': hasPermission,
+
   });
 },);
 

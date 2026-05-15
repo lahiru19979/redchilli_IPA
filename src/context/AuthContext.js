@@ -136,7 +136,7 @@ import { authAPI } from '../api/apiClient';
 
 const AuthContext = createContext({});
 
-export const AuthProvider = ({ children }) => {
+export const AuthProvider = async ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [permissions, setPermissions] = useState([]);
@@ -145,7 +145,14 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     loadStoredAuth();
   }, []);
+console.log('AuthContext Render:', {
+  'User ID': user?.id,
+  'Name': `${user?.first_name} ${user?.last_name}`,
+  'Permissions': permissions
+});
 
+const response = await authAPI.getPermissions();
+console.log('API response:', JSON.stringify(response.data));
   const loadStoredAuth = async () => {
     try {
       const storedToken = await storage.get(StorageKeys.TOKEN);
@@ -244,9 +251,9 @@ export const AuthProvider = ({ children }) => {
    */
   const hasPermission = (permission) => {
     // User type 1 (Admin) has ALL permissions
-    if (user?.role_id == 1) {
-      return true;
-    }
+    // if (user?.role_id == 1) {
+    //   return true;
+    // }
 
     // If no permission required, allow access
     if (!permission) return true;
@@ -267,9 +274,9 @@ export const AuthProvider = ({ children }) => {
    */
   const hasAllPermissions = (permissionList) => {
     // User type 1 (Admin) has ALL permissions
-    if (user?.role_id == 1) {
-      return true;
-    }
+    // if (user?.role_id == 1) {
+    //   return true;
+    // }
 
     if (!permissionList || permissionList.length === 0) return true;
     return permissionList.every(p => permissions.includes(p));
@@ -279,9 +286,9 @@ export const AuthProvider = ({ children }) => {
    * Check if user is admin (role_id 1)
    * @returns {boolean}
    */
-  // const isAdmin = () => {
-  //   return user?.role_id == 1;
-  // };
+  const isAdmin = () => {
+    return user?.role_id == 1;
+  };
 
   /**
    * Refresh permissions from server
@@ -324,7 +331,7 @@ export const AuthProvider = ({ children }) => {
         getFullName,
         hasPermission,
         hasAllPermissions,
-        // isAdmin,
+        isAdmin,
         refreshPermissions,
       }}>
       {children}
