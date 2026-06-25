@@ -150,12 +150,25 @@ export const AuthProvider = ({ children }) => {
     try {
       const storedToken = await storage.get(StorageKeys.TOKEN);
       const storedUser = await storage.get(StorageKeys.USER);
-      const storedPermissions = await storage.get(StorageKeys.PERMISSIONS);
 
       if (storedToken && storedUser) {
         setToken(storedToken);
         setUser(storedUser);
-        setPermissions(storedPermissions || []);
+
+        // Always fetch fresh permissions from backend on app start
+        try {
+          const response = await authAPI.getPermissions();
+          if (response.data.status) {
+            const freshPermissions = response.data.permissions;
+            setPermissions(freshPermissions);
+            await storage.set(StorageKeys.PERMISSIONS, freshPermissions);
+            console.log('Fresh permissions loaded:', freshPermissions);
+          }
+        } catch {
+          // Fall back to cached permissions if API fails (e.g. offline)
+          const storedPermissions = await storage.get(StorageKeys.PERMISSIONS);
+          setPermissions(storedPermissions || []);
+        }
       }
     } catch (error) {
       console.error('Load auth error:', error);
@@ -243,44 +256,18 @@ export const AuthProvider = ({ children }) => {
    * @returns {boolean}
    */
   const hasPermission = (permission) => {
-    // User type 1 (Admin) has ALL permissions
-    // if (user?.role_id == 1) {
-    //   return true;
-    // }
-
-    // If no permission required, allow access
     if (!permission) return true;
 
-    // If array, check if user has ANY of the permissions
     if (Array.isArray(permission)) {
       return permission.some(p => permissions.includes(p));
     }
 
-    // Check single permission
     return permissions.includes(permission);
   };
 
-  /**
-   * Check if user has ALL specified permissions
-   * @param {string[]} permissionList - Array of permission names
-   * @returns {boolean}
-   */
   const hasAllPermissions = (permissionList) => {
-    // User type 1 (Admin) has ALL permissions
-    // if (user?.role_id == 1) {
-    //   return true;
-    // }
-
     if (!permissionList || permissionList.length === 0) return true;
     return permissionList.every(p => permissions.includes(p));
-  };
-
-  /**
-   * Check if user is admin (role_id 1)
-   * @returns {boolean}
-   */
-  const isAdmin = () => {
-    return user?.role_id == 1;
   };
 
   /**
@@ -324,7 +311,7 @@ export const AuthProvider = ({ children }) => {
         getFullName,
         hasPermission,
         hasAllPermissions,
-        isAdmin,
+        // isAdmin,
         refreshPermissions,
       }}>
       {children}

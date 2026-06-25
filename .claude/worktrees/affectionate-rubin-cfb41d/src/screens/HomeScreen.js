@@ -23,7 +23,7 @@ const ACTION_CARDS = [
     subtitle: 'View & create invoices',
     color: '#007AFF',
     screen: 'Invoice',
-    permission: 'View CK invoices',
+    permission: 'Invoice module',
   },
  
   {
@@ -33,7 +33,7 @@ const ACTION_CARDS = [
     subtitle: 'Add a new product',
     color: '#4CAF50',
     screen: 'AllProducts_screen',
-    permission: 'view_products',
+    permission: 'Products Section',
   },
   {
     id: 'all_inventory',
@@ -42,7 +42,7 @@ const ACTION_CARDS = [
     subtitle: 'View & manage stock',
     color: '#FF9800',
     screen: 'AllStocks',
-    permission: 'view_inventory',
+    permission: 'Inventory module',
   },
   {
     id: 'revenue_reports',
@@ -51,7 +51,7 @@ const ACTION_CARDS = [
     subtitle: 'View detailed reports',
     color: '#9C27B0',
     screen: 'reports',
-    permission: 'View revenue dashboard',
+    permission: 'Revanue module',
   },
   {
     id: 'cost_module',
@@ -60,7 +60,7 @@ const ACTION_CARDS = [
     subtitle: 'View detailed cost Module',
     color: '#27b02e',
     screen: 'Cost',
-    permission: 'view_vendor',
+    permission: 'Cost module',
   },
 ];
 
@@ -72,7 +72,7 @@ const STAT_CARDS = [
     key: 'today_sales',
     prefix: 'Rs ',
     color: '#4CAF50',
-    permission: 'View revenue dashboard',
+    permission: 'view_reports',
   },
   {
     id: 'total_products',
@@ -88,7 +88,7 @@ const STAT_CARDS = [
     key: 'pending_orders',
     prefix: '',
     color: '#FF9800',
-    permission: 'View CK invoices',
+    permission: 'view_invoices',
   },
   {
     id: 'total_customers',
@@ -101,7 +101,7 @@ const STAT_CARDS = [
 ];
  
 const HomeScreen = ({ navigation }) => {
-  const { user, hasPermission, refreshPermissions, isAdmin, permissions } = useAuth();
+  const { user, hasPermission, refreshPermissions } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -116,8 +116,7 @@ const HomeScreen = ({ navigation }) => {
       setLoading(false);
     }
   };
-console.log('Permissions:', permissions);
-console.log('Can access Invoice module:', hasPermission('Invoice module'));
+
   useEffect(() => {
     fetchDashboard();
   }, []);
@@ -128,8 +127,6 @@ console.log('Can access Invoice module:', hasPermission('Invoice module'));
     'Name': `${user?.first_name} ${user?.last_name}`,
     'Email': user?.email,
     'role': user?.role_id,
-    'Permissions': hasPermission,
-
   });
 },);
 
@@ -197,11 +194,6 @@ console.log('Can access Invoice module:', hasPermission('Invoice module'));
             Hello, {user?.first_name || 'User'}! 👋
           </Text>
           <Text style={styles.date}>{new Date().toLocaleDateString()}</Text>
-          {isAdmin() && (
-            <View style={styles.adminBadge}>
-              <Text style={styles.adminBadgeText}>Admin</Text>
-            </View>
-          )}
         </View>
       </View>
 

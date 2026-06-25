@@ -136,7 +136,7 @@ import { authAPI } from '../api/apiClient';
 
 const AuthContext = createContext({});
 
-export const AuthProvider = ({ children }) => {
+export const AuthProvider = async ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [permissions, setPermissions] = useState([]);
@@ -145,7 +145,14 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     loadStoredAuth();
   }, []);
+console.log('AuthContext Render:', {
+  'User ID': user?.id,
+  'Name': `${user?.first_name} ${user?.last_name}`,
+  'Permissions': permissions
+});
 
+const response = await authAPI.getPermissions();
+console.log('API response:', JSON.stringify(response.data));
   const loadStoredAuth = async () => {
     try {
       const storedToken = await storage.get(StorageKeys.TOKEN);
