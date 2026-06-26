@@ -5,6 +5,9 @@ import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 // Change this to your Laravel API URL
 const BASE_URL = 'https://redchilli.lk/api';
 
+// Base host used to build absolute URLs for uploaded media (e.g. expense images)
+export const MEDIA_BASE_URL = 'https://redchilli.lk';
+
 const apiClient = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
@@ -102,6 +105,47 @@ export const revAPI = {
   getDegsignRevenue: () => apiClient.get(`/daily-revenue-design`),
   getHeatpressRevenue: filter =>
     apiClient.get(`/Heatpress-revenue?searchKey=${filter}`),
+};
+
+export const costAPI = {
+  // Dropdown data for the expense/budget forms (cost types, codes, descriptions)
+  getMeta: () => apiClient.get('/cost/meta'),
+
+  // Expenses
+  getExpenses: () => apiClient.get('/expenses'),
+  createExpense: formData =>
+    apiClient.post('/expenses', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  updateExpense: (id, formData) =>
+    apiClient.post(`/expenses/${id}?_method=PUT`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  // Budgets
+  getBudgets: () => apiClient.get('/budgets'),
+  createBudget: data => apiClient.post('/budgets', data),
+  updateBudget: (id, data) => apiClient.put(`/budgets/${id}`, data),
+
+  // Budget timelines
+  addTimeline: data => apiClient.post('/budget-timelines', data),
+  updateTimeline: (id, data) => apiClient.put(`/budget-timelines/${id}`, data),
+
+  // Cost setup: types
+  getCostTypes: () => apiClient.get('/cost-types'),
+  createCostType: data => apiClient.post('/cost-types', data),
+  updateCostType: (id, data) => apiClient.put(`/cost-types/${id}`, data),
+
+  // Cost setup: groups (codes)
+  getCostCodes: () => apiClient.get('/cost-codes'),
+  createCostCode: data => apiClient.post('/cost-codes', data),
+  updateCostCode: (id, data) => apiClient.put(`/cost-codes/${id}`, data),
+
+  // Cost setup: descriptions
+  getCostDescriptions: () => apiClient.get('/cost-descriptions'),
+  createCostDescription: data => apiClient.post('/cost-descriptions', data),
+  updateCostDescription: (id, data) =>
+    apiClient.put(`/cost-descriptions/${id}`, data),
 };
 
 export const customerAPI = {

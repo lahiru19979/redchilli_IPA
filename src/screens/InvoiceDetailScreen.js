@@ -18,7 +18,7 @@ const InvoiceDetailScreen = ({route, navigation}) => {
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState([]);
 
-  const statusInfo = getStatusInfo(invoiceDetails.status);
+  const statusInfo = getStatusInfo(invoiceDetails.status_label);
 
   // Fetch full invoice details if needed
   useEffect(() => {
@@ -31,7 +31,9 @@ const InvoiceDetailScreen = ({route, navigation}) => {
       setLoading(true);
       const response = await invoiceAPI.getById(invoice.id);
       const data = response.data.data || response.data;
-      setInvoiceDetails(data);
+      // Keep the status_label (and any other list-row fields) if the detail
+      // response doesn't include them.
+      setInvoiceDetails({ ...invoice, ...data });
       setItems(data.items || data.invoice_items || []);
     } catch (error) {
       console.error('Fetch invoice details error:', error);

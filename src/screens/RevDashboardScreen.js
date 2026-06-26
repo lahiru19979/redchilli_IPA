@@ -220,11 +220,8 @@ const RevDashboardScreen = ({ navigation }) => {
         />
       }
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Dashboard</Text>
-        <Text style={styles.headerSubtitle}>Sales Overview</Text>
-      </View>
+      {/* Subtitle */}
+      <Text style={styles.dashboardIntro}>Sales Overview</Text>
 
       {/* Quick Stats Cards - Only show on Daily tab */}
       {activeTab === 'daily' && (
@@ -553,26 +550,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  header: {
-    backgroundColor: '#007AFF',
-    paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
+  dashboardIntro: {
+    fontSize: 13,
+    color: '#777',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 4,
   },
   quickStatsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 12,
-    marginTop: -20,
+    marginTop: 8,
     marginBottom: 12,
   },
   quickStatCard: {

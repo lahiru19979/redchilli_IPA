@@ -24,6 +24,11 @@ import AllStocksScreen from '../screens/AllstocksScreen';
 import revenueScreen from '../screens/RevDashboardScreen';
 import AllProductScreen from '../screens/AllProductScreen';
 import CostScreen from '../screens/CostScreen';
+import ExpensesScreen from '../screens/ExpensesScreen';
+import BudgetScreen from '../screens/BudgetScreen';
+import CostTypesScreen from '../screens/CostTypesScreen';
+import CostGroupsScreen from '../screens/CostGroupsScreen';
+import CostDescriptionsScreen from '../screens/CostDescriptionsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -80,7 +85,7 @@ const MainTabs = () => {
       {/* <Tab.Screen
         name="Invoice"
         component={InvoiceScreen}
-        options={{ title: 'Invoices' }}
+        options={{ title: 'Invoices' }}r
       />
       <Tab.Screen
         name="Product"
@@ -115,6 +120,8 @@ const AppNavigator = () => {
             headerTitleStyle: {
               fontWeight: 'bold',
             },
+            headerTitleAlign: 'center',
+            headerBackTitleVisible: false,
           }}
         >
           {isAuthenticated ? (
@@ -170,23 +177,48 @@ const AppNavigator = () => {
               <Stack.Screen
                 name="AllStocks"
                 component={AllStocksScreen}
-                options={{ headerShown: false }}
+                options={{ title: 'Inventory' }}
               />
               <Stack.Screen
                 name="reports"
                 component={revenueScreen}
-                options={{ headerShown: false }}
+                options={{ title: 'Revenue' }}
               />
               <Stack.Screen
                 name="AllProducts_screen"
                 component={AllProductScreen}
-                options={{ headerShown: false }}
+                options={{ title: 'All Products' }}
               />
-              
+
               <Stack.Screen
                 name="Cost"
                 component={CostScreen}
-                options={{ headerShown: false }}
+                options={{ title: 'Cost Module' }}
+              />
+              <Stack.Screen
+                name="Expenses"
+                component={ExpensesScreen}
+                options={{ title: 'Expenses' }}
+              />
+              <Stack.Screen
+                name="Budget"
+                component={BudgetScreen}
+                options={{ title: 'Budgets' }}
+              />
+              <Stack.Screen
+                name="CostTypes"
+                component={CostTypesScreen}
+                options={{ title: 'Cost Types' }}
+              />
+              <Stack.Screen
+                name="CostGroups"
+                component={CostGroupsScreen}
+                options={{ title: 'Cost Groups' }}
+              />
+              <Stack.Screen
+                name="CostDescriptions"
+                component={CostDescriptionsScreen}
+                options={{ title: 'Cost Descriptions' }}
               />
             </>
           ) : (

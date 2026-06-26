@@ -3,7 +3,7 @@ import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import {getStatusInfo,formatDate} from '../utils/helpers';
 
 const InvoiceCard = ({invoice, onPress}) => {
-  const statusInfo = getStatusInfo(invoice.status);
+  const statusInfo = getStatusInfo(invoice.status_label);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>

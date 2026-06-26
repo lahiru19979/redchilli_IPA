@@ -1,116 +1,63 @@
 
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { invoiceAPI } from '../api/apiClient';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { useAuth } from '../context/AuthContext';
+
+const COST_PERMISSION = 'view_vendor';
 
 const ACTION_CARDS = [
   {
-    id: 'all_costtypes',
-    icon: '💵',
-    title: 'Cost Types',
-    subtitle: 'View & create cost types',
-    color: '#007AFF',
-    screen: 'AllCostTypes_screen',
-    // permission: 'Invoice module',
+    id: 'expenses',
+    icon: '🧾',
+    title: 'Expenses',
+    subtitle: 'View & add expenses',
+    color: '#27b02e',
+    screen: 'Expenses',
   },
   {
-    id: 'all_costgroups',
-    icon: '💵',
-    title: 'Cost Groups',
-    subtitle: 'View & create cost groups',
-    color: '#4CAF50',
-    screen: 'AllCostGroups_screen',
-    // permission: 'Products Section',
-  },
-  {
-    id: 'all_costdescriptions',
-    icon: '💵',
-    title: 'Cost Descriptions',
-    subtitle: 'View & create cost descriptions',
-    color: '#FF9800',
-    screen: 'AllCostDescriptions_screen',
-    // permission: 'Inventory module',
-  },
-];
-
-const STAT_CARDS = [
-  {
-    id: 'total_invoices',
-    title: 'Total Invoices',
-    key: 'total_invoices',
-    color: '#007AFF',
-    prefix: '',
-  },
-  {
-    id: 'total_products',
-    title: 'Total Products',
-    key: 'total_products',
-    color: '#4CAF50',
-    prefix: '',
-  },
-  {
-    id: 'total_stock',
-    title: 'Total Stock',
-    key: 'total_stock',
-    color: '#FF9800',
-    prefix: '',
-  },
-  {
-    id: 'total_revenue',
-    title: 'Total Revenue',
-    key: 'total_revenue',
+    id: 'budgets',
+    icon: '📅',
+    title: 'Budgets',
+    subtitle: 'View & set budgets',
     color: '#9C27B0',
-    prefix: '$',
+    screen: 'Budget',
+  },
+  {
+    id: 'cost_types',
+    icon: '🏷️',
+    title: 'Cost Types',
+    subtitle: 'Add & edit cost types',
+    color: '#007AFF',
+    screen: 'CostTypes',
+  },
+  {
+    id: 'cost_groups',
+    icon: '📂',
+    title: 'Cost Groups',
+    subtitle: 'Add & edit cost groups',
+    color: '#FF9800',
+    screen: 'CostGroups',
+  },
+  {
+    id: 'cost_descriptions',
+    icon: '📝',
+    title: 'Descriptions',
+    subtitle: 'Add & edit descriptions',
+    color: '#00BCD4',
+    screen: 'CostDescriptions',
   },
 ];
 
 const CostScreen = ({ navigation }) => {
-  const [dashboard, setDashboard] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const fetchDashboard = async () => {
-    try {
-      const response = await invoiceAPI.getDashboard();
-      setDashboard(response.data);
-    } catch (error) {
-      console.error('Dashboard fetch error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchDashboard();
-    setRefreshing(false);
-  }, []);
-
-  if (loading) {
-    return <LoadingSpinner message="Loading dashboard..." />;
-  }
-
-  const StatCard = ({ title, value, color, prefix = '' }) => (
-    <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <Text style={styles.statValue}>
-        {prefix}{value || 0}
-      </Text>
-      <Text style={styles.statTitle}>{title}</Text>
-    </View>
-  );
+  const { hasPermission } = useAuth();
+  const canAccess = hasPermission(COST_PERMISSION);
 
   const ActionCard = ({ icon, title, subtitle, color, onPress }) => (
     <TouchableOpacity
@@ -127,35 +74,11 @@ const CostScreen = ({ navigation }) => {
   );
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      {/* Stats Section */}
-      {dashboard && (
-        <View style={styles.statsContainer}>
-          <Text style={styles.sectionTitle}>Overview</Text>
-          <View style={styles.statsGrid}>
-            {STAT_CARDS.map(card => (
-              <StatCard
-                key={card.id}
-                title={card.title}
-                value={dashboard[card.key]}
-                color={card.color}
-                prefix={card.prefix}
-              />
-            ))}
-          </View>
-        </View>
-      )}
+    <ScrollView style={styles.container}>
+      <Text style={styles.intro}>Manage expenses and budgets</Text>
 
-      {/* Quick Actions Section */}
       <View style={styles.actionsContainer}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-
-        {ACTION_CARDS.length > 0 ? (
+        {canAccess ? (
           <View style={styles.actionCardsGrid}>
             {ACTION_CARDS.map(card => (
               <ActionCard
@@ -172,7 +95,8 @@ const CostScreen = ({ navigation }) => {
           <View style={styles.noPermissionsContainer}>
             <Text style={styles.noPermissionsIcon}>🔒</Text>
             <Text style={styles.noPermissionsText}>
-              No actions available. Please contact your administrator.
+              You don't have permission to access the Cost module.{'\n'}Please
+              contact your administrator.
             </Text>
           </View>
         )}
@@ -187,6 +111,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  intro: {
+    fontSize: 13,
+    color: '#777',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 4,
   },
   sectionTitle: {
     fontSize: 18,

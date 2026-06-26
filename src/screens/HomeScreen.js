@@ -9,6 +9,7 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { invoiceAPI } from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -23,9 +24,9 @@ const ACTION_CARDS = [
     subtitle: 'View & create invoices',
     color: '#007AFF',
     screen: 'Invoice',
-    permission: 'View CK invoices',
+    permission: 'view_CRM_management',
   },
- 
+
   {
     id: 'create_product',
     icon: '📦',
@@ -33,7 +34,7 @@ const ACTION_CARDS = [
     subtitle: 'Add a new product',
     color: '#4CAF50',
     screen: 'AllProducts_screen',
-    permission: 'view_products',
+    permission: 'add_products',
   },
   {
     id: 'all_inventory',
@@ -60,7 +61,7 @@ const ACTION_CARDS = [
     subtitle: 'View detailed cost Module',
     color: '#27b02e',
     screen: 'Cost',
-    permission: 'view_vendor',
+    permission: 'view_finance_master',
   },
 ];
 
@@ -99,8 +100,9 @@ const STAT_CARDS = [
     permission: 'view_customers',
   },
 ];
- 
+
 const HomeScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const { user, hasPermission, refreshPermissions, isAdmin, permissions } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -191,7 +193,7 @@ console.log('Can access Invoice module:', hasPermission('Invoice module'));
       }
     >
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View style={styles.headerContent}>
           <Text style={styles.greeting}>
             Hello, {user?.first_name || 'User'}! 👋
@@ -261,7 +263,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  
+
   // Header Styles
   header: {
     backgroundColor: '#007AFF',

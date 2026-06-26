@@ -8,10 +8,12 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useAuth} from '../context/AuthContext';
 import {authAPI} from '../api/apiClient';
 
 const ProfileScreen = () => {
+  const insets = useSafeAreaInsets();
   const {user, logout, updateUser, getFullName} = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   // 👇 UPDATED: Use first_name and last_name
@@ -62,7 +64,7 @@ const ProfileScreen = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, {paddingTop: insets.top + 16}]}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{avatarLetter}</Text>
         </View>
