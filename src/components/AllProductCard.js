@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, Text, StyleSheet, TouchableOpacity, Image} from 'react-native';
 
-const AllProductCard = ({product, onPress}) => {
+const AllProductCard = ({product, onPress, onEdit}) => {
   const BASE_URL = 'https://redchilli.lk/'; // Replace with your base URL
 
   const getStatusColor = (status) => {
@@ -131,8 +131,17 @@ const AllProductCard = ({product, onPress}) => {
         </View>
       </View>
 
-      {/* Arrow Icon */}
+      {/* Edit button + Arrow Icon */}
       <View style={styles.arrowContainer}>
+        {onEdit && (
+          <TouchableOpacity
+            style={styles.editBtn}
+            onPress={onEdit}
+            activeOpacity={0.7}
+            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+            <Text style={styles.editBtnText}>✎ Edit</Text>
+          </TouchableOpacity>
+        )}
         <Text style={styles.arrowIcon}>›</Text>
       </View>
     </TouchableOpacity>
@@ -294,7 +303,20 @@ const styles = StyleSheet.create({
   },
   arrowContainer: {
     justifyContent: 'center',
+    alignItems: 'center',
     paddingLeft: 8,
+  },
+  editBtn: {
+    backgroundColor: '#1565C0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  editBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
   arrowIcon: {
     fontSize: 24,

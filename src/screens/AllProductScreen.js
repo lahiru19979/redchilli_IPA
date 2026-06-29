@@ -105,6 +105,7 @@ const AllProductScreen = ({navigation}) => {
     <ProductCard
       product={item}
       onPress={() => navigation.navigate('ProductDetail', {product: item})}
+      onEdit={() => navigation.navigate('EditProduct', {product: item})}
     />
   );
 

@@ -86,8 +86,13 @@ export const productAPI = {
     apiClient.get(`/categories/level2?level1_id=${level1Id}`),
   getCategoriesByLevel3: level2Id =>
     apiClient.get(`/categories/level3?level2_id=${level2Id}`),
+  getCategoriesByLevel4: level2Id =>
+    apiClient.get(`/categories/level4?level2_id=${level2Id}`),
   getFilters: parentId => apiClient.get(`/filters?parent_id=${parentId}`),
   getAllproducts: (page = 1) => apiClient.get(`/all_products?page=${page}`),
+  getProduct: id => apiClient.get(`/products/${id}`),
+  createProduct: data => apiClient.post('/products', data),
+  updateProduct: (id, data) => apiClient.post(`/products/${id}`, data),
 };
 
 export const inventoryAPI = {

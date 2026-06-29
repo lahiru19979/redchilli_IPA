@@ -85,7 +85,17 @@ const Selector = ({ value, placeholder, onPress, disabled }) => (
 );
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
-const CreateProductScreen = ({ navigation }) => {
+const CreateProductScreen = ({ navigation, route }) => {
+  // Edit mode — a product passed via navigation means we are editing it.
+  const editProductParam = route?.params?.product || null;
+  const editId = editProductParam?.id || null;
+  const isEdit = !!editId;
+  const [submitting, setSubmitting] = useState(false);
+  const [loadingProduct, setLoadingProduct] = useState(false);
+  const [editData, setEditData] = useState(null);
+  // Ids of already-saved product images to keep on update (new ones are base64).
+  const [keepImageIds, setKeepImageIds] = useState([]);
+
   // State — Basic Info
   const [ProductNo, setProductNo] = useState('');
   const [loadingProductNo, setLoadingProductNo] = useState(false);
@@ -312,7 +322,7 @@ const CreateProductScreen = ({ navigation }) => {
         compressImageQuality: 0.8,
         compressImageMaxWidth: 1200,
         compressImageMaxHeight: 1600,
-        includeBase64: false,
+        includeBase64: true,
         mediaType: 'photo',
       });
 
@@ -347,7 +357,7 @@ const CreateProductScreen = ({ navigation }) => {
         compressImageQuality: 0.8,
         compressImageMaxWidth: 1200,
         compressImageMaxHeight: 1600,
-        includeBase64: false,
+        includeBase64: true,
         mediaType: 'photo',
       });
 
@@ -382,6 +392,10 @@ const CreateProductScreen = ({ navigation }) => {
         size: image.size,
         width: image.width,
         height: image.height,
+        // data URI used when uploading a newly-picked image
+        dataUri: image.data
+          ? `data:${image.mime};base64,${image.data}`
+          : null,
         isFeatured: productImages.length === 0,
       };
       setProductImages(prev => [...prev, newImg]);
@@ -547,17 +561,20 @@ const CreateProductScreen = ({ navigation }) => {
     }
   };
 
-  const fetchCategories3 = async level2Id => {
+  // Load the Level 4 categories that fall under the selected Level 2 (Level 3 is
+  // skipped in the UI, matching the web product form). The results are stored in the
+  // categories3 state, which now holds Level 4 options.
+  const fetchCategoriesLevel4 = async level2Id => {
     try {
       setLoadingCat3(true);
       setCategories3([]); // clear previous
-      const response = await productAPI.getCategoriesByLevel3(level2Id);
-      console.log('Cat3:', JSON.stringify(response.data, null, 2));
+      const response = await productAPI.getCategoriesByLevel4(level2Id);
+      console.log('Cat4:', JSON.stringify(response.data, null, 2));
       if (response.data.status === 'success') {
         setCategories3(response.data.data);
       }
     } catch (error) {
-      console.log('Cat3 fetch error:', error.message);
+      console.log('Cat4 fetch error:', error.message);
     } finally {
       setLoadingCat3(false);
     }
@@ -595,14 +612,218 @@ const CreateProductScreen = ({ navigation }) => {
   };
 
   useEffect(() => {
-    fetchMaxProductNo();
-    fetchTypes(); // ← add this
-    fetchVenders(); // ← add this
-    fetchBrands(); // ← add this
-    fetchSizeCharts(); // ← add this
-    fetchCategories1(); // ← add this
-    fetchSeasons(); // ← add this
+    if (!isEdit) fetchMaxProductNo(); // new product code only when creating
+    fetchTypes();
+    fetchVenders();
+    fetchBrands();
+    fetchSizeCharts();
+    fetchCategories1();
+    fetchSeasons();
   }, []);
+
+  // ─── Edit mode: load the product and prefill the form ────────────────────────
+  useEffect(() => {
+    if (!isEdit) return;
+    (async () => {
+      try {
+        setLoadingProduct(true);
+        const res = await productAPI.getProduct(editId);
+        if (res.data.status === 'success') {
+          const d = res.data.data;
+          const p = d.product;
+          setEditData(d);
+
+          setProductName(p.product_name || '');
+          setSlug(p.slug || '');
+          setProductNo(p.product_code || '');
+          setVideoLink(p.video_link || '');
+          setSearchTags(p.search_tags || '');
+          setWeight(p.weight != null ? String(p.weight) : '');
+          setDimW(p.width != null ? String(p.width) : '1');
+          setDimH(p.height != null ? String(p.height) : '1');
+          setDimL(p.length != null ? String(p.length) : '1');
+          setIsGift(!!Number(p.is_gift));
+          setWarranty(!!Number(p.warrenty_available));
+          setReturnAccepted(!!Number(p.return_accepted_available));
+          setDescVisible(Number(p.description_visible) !== 0);
+          setExpiryDate(p.expiry_date || '');
+          setDeliveryMargin(p.delivery_margin != null ? String(p.delivery_margin) : '');
+          setShortDesc(p.short_description || '');
+          setProductDesc(p.product_description || '');
+          setPageTitle(p.page_title || '');
+          setMetaDesc(p.meta_tag_description || '');
+          setMetaKeywords(p.meta_keywords || '');
+          setCanonicalUrl(p.canonical_url || '');
+          setSelectedGender(p.gender || '');
+
+          // Categories (Level 1 -> Level 2 -> Level 4) + load each level's options.
+          if (d.category_level1) {
+            setSelectedCat1(d.category_level1);
+            fetchCategories2(d.category_level1.id);
+          }
+          if (d.category_level2) {
+            setSelectedCat2(d.category_level2);
+            fetchCategoriesLevel4(d.category_level2.id);
+          }
+          if (d.category_level4) setSelectedCat3(d.category_level4);
+
+          const deepest =
+            d.category_level4 || d.category_level2 || d.category_level1;
+          if (deepest) {
+            setShowFilters(true);
+            fetchFilters(deepest.id);
+          }
+
+          setSelectedFilters(d.selected_filters || {});
+
+          setVariants(
+            (d.variants || []).map(v => ({
+              name: v.variant_name,
+              price: v.price != null ? String(v.price) : '',
+            })),
+          );
+
+          const imgs = (d.images || []).map(im => ({
+            id: im.id,
+            uri: im.url,
+            isFeatured: im.is_featured === 1,
+            existing: true,
+          }));
+          setProductImages(imgs);
+          setKeepImageIds(imgs.map(i => i.id));
+        }
+      } catch (e) {
+        console.log('Load product error:', e.message);
+        Alert.alert('Error', 'Could not load the product to edit.');
+      } finally {
+        setLoadingProduct(false);
+      }
+    })();
+  }, [isEdit, editId]);
+
+  // Map the saved ids onto the selector objects once each dropdown list is loaded.
+  useEffect(() => {
+    if (editData && types.length) {
+      setSelectedType(
+        types.find(t => String(t.id) === String(editData.product.type_id)) || null,
+      );
+    }
+  }, [editData, types]);
+  useEffect(() => {
+    if (editData && venders.length) {
+      setSelectedVender(
+        venders.find(v => String(v.id) === String(editData.product.vender_id)) || null,
+      );
+    }
+  }, [editData, venders]);
+  useEffect(() => {
+    if (editData && brands.length) {
+      setSelectedBrand(
+        brands.find(b => String(b.id) === String(editData.product.brand_id)) || null,
+      );
+    }
+  }, [editData, brands]);
+  useEffect(() => {
+    if (editData && sizeCharts.length) {
+      setSelectedSizechart(
+        sizeCharts.find(
+          s => String(s.id) === String(editData.product.sizechartup),
+        ) || null,
+      );
+    }
+  }, [editData, sizeCharts]);
+  useEffect(() => {
+    if (editData && seasons.length) {
+      const ids = (editData.season_ids || []).map(String);
+      setSelectedSeasons(seasons.filter(s => ids.includes(String(s.id))));
+    }
+  }, [editData, seasons]);
+
+  // ─── Build payload + submit (create or update) ───────────────────────────────
+  const buildPayload = () => ({
+    product_name: productName,
+    slug,
+    product_code: ProductNo,
+    product_description: productDesc,
+    short_description: shortDesc,
+    weight,
+    weight_unit: 'kg',
+    volmetric_weight: volumetric,
+    width: dimW,
+    height: dimH,
+    length: dimL,
+    type: selectedType?.id,
+    vender_id: selectedVender?.id,
+    brand_id: selectedBrand?.id,
+    size_chartup: selectedSizechart?.id,
+    origin_zip_code: selectedOrigin?.id,
+    gender: selectedGender,
+    is_gift: isGift ? 1 : 0,
+    warrenty_available: warranty ? 1 : 0,
+    return_accepted_available: returnAccepted ? 1 : 0,
+    description_visible: descVisible ? 1 : 0,
+    expiry_date: expiryDate || null,
+    delivery_margin: deliveryMargin || null,
+    video_link: videoLink || null,
+    search_tags: searchTags,
+    page_title: pageTitle,
+    meta_tag_description: metaDesc,
+    meta_keywords: metaKeywords,
+    canonical_url: canonicalUrl,
+    status: isEdit ? editData?.product?.status ?? 0 : 0,
+    selected_categories: selectedCat1?.id || null,
+    selected_categories2: selectedCat2?.id || null,
+    selected_categories4: selectedCat3?.id || null,
+    variants: variants.map(v => ({ name: v.name, price: v.price || 0 })),
+    filters: selectedFilters,
+    seasons: selectedSeasons.map(s => s.id),
+    product_images: productImages
+      .filter(i => i.dataUri)
+      .map(i => ({ src: i.dataUri, is_featured: i.isFeatured ? 1 : 0 })),
+    keep_image_ids: productImages.filter(i => i.existing).map(i => i.id),
+  });
+
+  const handleSubmit = async () => {
+    if (submitting) return;
+    if (!productName.trim()) {
+      Alert.alert('Validation', 'Product name is required');
+      return;
+    }
+    if (!selectedType?.id) {
+      Alert.alert('Validation', 'Type is required');
+      return;
+    }
+    if (!weight) {
+      Alert.alert('Validation', 'Weight is required');
+      return;
+    }
+    if (!variants.length) {
+      Alert.alert('Validation', 'Please add at least one variant');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const payload = buildPayload();
+      const res = isEdit
+        ? await productAPI.updateProduct(editId, payload)
+        : await productAPI.createProduct(payload);
+
+      if (res.data.status === 'success') {
+        Alert.alert('Success', res.data.message || 'Saved successfully', [
+          { text: 'OK', onPress: () => navigation?.goBack?.() },
+        ]);
+      } else {
+        Alert.alert('Error', res.data.message || 'Could not save the product');
+      }
+    } catch (e) {
+      const msg =
+        e.response?.data?.message || e.message || 'Could not save the product';
+      Alert.alert('Error', msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // ─── Generic Dropdown Modal ──────────────────────────────────────────────
   const DropModal = ({
@@ -960,7 +1181,7 @@ const CreateProductScreen = ({ navigation }) => {
             />
           )}
 
-          <FieldLabel label="Category Level 3" required />
+          <FieldLabel label="Category Level 4" />
           {loadingCat3 ? (
             <ActivityIndicator size="small" color={C.accent} />
           ) : (
@@ -1380,8 +1601,19 @@ const CreateProductScreen = ({ navigation }) => {
         >
           <Text style={s.cancelBtnText}>Close</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.submitBtn} activeOpacity={0.85}>
-          <Text style={s.submitBtnText}>Create Product</Text>
+        <TouchableOpacity
+          style={[s.submitBtn, submitting && { opacity: 0.6 }]}
+          activeOpacity={0.85}
+          onPress={handleSubmit}
+          disabled={submitting}
+        >
+          {submitting ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={s.submitBtnText}>
+              {isEdit ? 'Update Product' : 'Create Product'}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -1462,15 +1694,17 @@ const CreateProductScreen = ({ navigation }) => {
           setSelectedCat2(item);
           setSelectedCat3(null);
           setCategories3([]);
-          setShowFilters(false);
-          fetchCategories3(item.id); // ← fetch level3 when level2 selected
+          setSelectedFilters({}); // ← clear previous filters
+          setShowFilters(true);
+          fetchCategoriesLevel4(item.id); // ← fetch level4 when level2 selected
+          fetchFilters(item.id); // ← filters for level2 (refined if a level4 is picked)
         }}
       />
 
       <DropModal
         mKey="cat3"
-        title="Category Level 3"
-        data={categories3} // ← real data
+        title="Category Level 4"
+        data={categories3} // ← real data (holds Level 4 options)
         labelKey="category_name"
         onSelect={item => {
           setSelectedCat3(item);

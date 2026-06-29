@@ -152,6 +152,11 @@ const AppNavigator = () => {
                 options={{ title: 'Create Product' }}
               />
               <Stack.Screen
+                name="EditProduct"
+                component={CreateProductScreen}
+                options={{ title: 'Edit Product' }}
+              />
+              <Stack.Screen
                 name="AllProduct"
                 component={productsScreen}
                 options={{ title: 'All Products' }}

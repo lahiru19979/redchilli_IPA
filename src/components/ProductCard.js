@@ -20,7 +20,7 @@ const getStatusInfo = status => {
   }
 };
 
-const ProductCard = ({product, onPress}) => {
+const ProductCard = ({product, onPress, onEdit}) => {
   const statusInfo = getStatusInfo(product.status);
   const [imgError, setImgError] = useState(false);
 
@@ -114,6 +114,15 @@ const ProductCard = ({product, onPress}) => {
             ? `Rs. ${product.selling_price}`
             : 'Price TBD'}
         </Text>
+        {onEdit && (
+          <TouchableOpacity
+            style={styles.editBtn}
+            onPress={onEdit}
+            activeOpacity={0.7}
+            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+            <Text style={styles.editBtnText}>✎ Edit</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
     </TouchableOpacity>
@@ -264,6 +273,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#2E7D32',
+  },
+  editBtn: {
+    backgroundColor: '#1565C0',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  editBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
 
