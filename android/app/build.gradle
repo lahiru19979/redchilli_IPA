@@ -79,10 +79,10 @@ android {
 
     namespace "com.invoiceapp"
     defaultConfig {
-        applicationId "com.invoiceapp"
+       applicationId "com.invoiceapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+       versionCode 1
         versionName "1.0"
     }
     signingConfigs {

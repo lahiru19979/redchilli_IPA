@@ -1,4 +1,4 @@
-package com.invoiceapp
+package com.redchilli.invoiceapp
 
 import android.app.Application
 import com.facebook.react.PackageList

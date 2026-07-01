@@ -108,6 +108,9 @@ const CreateProductScreen = ({ navigation, route }) => {
   const [brands, setBrands] = useState([]);
   const [loadingBrands, setLoadingBrands] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState(null);
+  const [colors, setColors] = useState([]);
+  const [loadingColors, setLoadingColors] = useState(false);
+  const [selectedColor, setSelectedColor] = useState(null);
   const [sizeCharts, setSizeCharts] = useState([]);
   const [loadingSizeCharts, setLoadingSizeCharts] = useState(false);
   const [selectedSizechart, setSelectedSizechart] = useState(null);
@@ -514,6 +517,20 @@ const CreateProductScreen = ({ navigation, route }) => {
       setLoadingBrands(false);
     }
   };
+  const fetchColors = async () => {
+    try {
+      setLoadingColors(true);
+      const response = await productAPI.getColors();
+      console.log('Colors:', JSON.stringify(response.data, null, 2));
+      if (response.data.status === 'success') {
+        setColors(response.data.data);
+      }
+    } catch (error) {
+      console.log('Colors fetch error:', error.message);
+    } finally {
+      setLoadingColors(false);
+    }
+  };
   const fetchSizeCharts = async () => {
     try {
       setLoadingSizeCharts(true);
@@ -616,6 +633,7 @@ const CreateProductScreen = ({ navigation, route }) => {
     fetchTypes();
     fetchVenders();
     fetchBrands();
+    fetchColors();
     fetchSizeCharts();
     fetchCategories1();
     fetchSeasons();
@@ -724,6 +742,13 @@ const CreateProductScreen = ({ navigation, route }) => {
     }
   }, [editData, brands]);
   useEffect(() => {
+    if (editData && colors.length) {
+      setSelectedColor(
+        colors.find(c => String(c.id) === String(editData.product.color_id)) || null,
+      );
+    }
+  }, [editData, colors]);
+  useEffect(() => {
     if (editData && sizeCharts.length) {
       setSelectedSizechart(
         sizeCharts.find(
@@ -755,6 +780,7 @@ const CreateProductScreen = ({ navigation, route }) => {
     type: selectedType?.id,
     vender_id: selectedVender?.id,
     brand_id: selectedBrand?.id,
+    color_id: selectedColor?.id,
     size_chartup: selectedSizechart?.id,
     origin_zip_code: selectedOrigin?.id,
     gender: selectedGender,
@@ -1029,6 +1055,21 @@ const CreateProductScreen = ({ navigation, route }) => {
               </View>
             </View>
           </View>
+
+          <FieldLabel label="Color" />
+          {loadingColors ? (
+            <ActivityIndicator size="small" color={C.accent} />
+          ) : (
+            <Selector
+              value={
+                selectedColor
+                  ? `${selectedColor.color_name} (${selectedColor.color_code})`
+                  : ''
+              }
+              placeholder="Select color"
+              onPress={() => setActiveModal('color')}
+            />
+          )}
 
           <FieldLabel label="Search Tags" hint="comma separated" />
           <TextInput
@@ -1638,6 +1679,17 @@ const CreateProductScreen = ({ navigation, route }) => {
         data={brands}
         labelKey="brand_name"
         onSelect={setSelectedBrand}
+      />
+      <DropModal
+        mKey="color"
+        title="Select Color"
+        data={colors.map(c => ({
+          ...c,
+          color: c.color_code,
+          short_name: c.color_code,
+        }))}
+        labelKey="color_name"
+        onSelect={setSelectedColor}
       />
       <DropModal
         mKey="origin"

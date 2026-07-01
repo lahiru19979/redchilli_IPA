@@ -79,6 +79,7 @@ export const productAPI = {
   getTypes: () => apiClient.get('/types'),
   getVenders: () => apiClient.get('/venders'),
   getBrands: () => apiClient.get('/brands'),
+  getColors: () => apiClient.get('/colors'),
   getSizeCharts: () => apiClient.get('/size-charts'),
   getSeasons: () => apiClient.get('/seasons'),
   getCategoriesByLevel1: () => apiClient.get('/categories/level1'),
