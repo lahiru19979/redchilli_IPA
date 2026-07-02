@@ -13,6 +13,7 @@ import SalesChart from '../components/SalesChart';
 import MonthlyRevenueChart from '../components/MonthlyRevenueChart';
 import NotClosedInvoicesChart from '../components/NotClosedInvoicesChart';
 import HeatpressRevenueChart from '../components/HeatpressRevenueChart';
+import { C } from '../utils/theme';
 
 const TABS = [
   { id: 'daily', label: '📊 Total Revenue' },
@@ -216,7 +217,7 @@ const RevDashboardScreen = ({ navigation }) => {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          colors={['#007AFF']}
+          colors={[C.accent]}
         />
       }
     >
@@ -226,7 +227,7 @@ const RevDashboardScreen = ({ navigation }) => {
       {/* Quick Stats Cards - Only show on Daily tab */}
       {activeTab === 'daily' && (
         <View style={styles.quickStatsContainer}>
-          <View style={[styles.quickStatCard, { backgroundColor: '#E3F2FD' }]}>
+          <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
             <Text style={styles.quickStatIcon}>💰</Text>
             <Text style={styles.quickStatValue}>
               Rs. {totalSales.toLocaleString()}
@@ -234,7 +235,7 @@ const RevDashboardScreen = ({ navigation }) => {
             <Text style={styles.quickStatLabel}>Total Sales</Text>
           </View>
 
-          <View style={[styles.quickStatCard, { backgroundColor: '#E8F5E9' }]}>
+          <View style={[styles.quickStatCard, { backgroundColor: C.successLight }]}>
             <Text style={styles.quickStatIcon}>📊</Text>
             <Text style={styles.quickStatValue}>
               {chartData?.labels?.length || 0}
@@ -242,7 +243,7 @@ const RevDashboardScreen = ({ navigation }) => {
             <Text style={styles.quickStatLabel}>Days Active</Text>
           </View>
 
-          <View style={[styles.quickStatCard, { backgroundColor: '#FFF3E0' }]}>
+          <View style={[styles.quickStatCard, { backgroundColor: C.warningLight }]}>
             <Text style={styles.quickStatIcon}>📈</Text>
             <Text style={styles.quickStatValue}>
               Rs.{' '}
@@ -260,7 +261,7 @@ const RevDashboardScreen = ({ navigation }) => {
       {/* Quick Stats Cards - Only show on DTF tab */}
       {activeTab === 'dtf' && (
         <View style={styles.quickStatsContainer}>
-          <View style={[styles.quickStatCard, { backgroundColor: '#FCE4EC' }]}>
+          <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
             <Text style={styles.quickStatIcon}>🎨</Text>
             <Text style={styles.quickStatValue}>
               Rs. {totalDtfSales.toLocaleString()}
@@ -268,7 +269,7 @@ const RevDashboardScreen = ({ navigation }) => {
             <Text style={styles.quickStatLabel}>Total DTF</Text>
           </View>
 
-          <View style={[styles.quickStatCard, { backgroundColor: '#F3E5F5' }]}>
+          <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
             <Text style={styles.quickStatIcon}>📊</Text>
             <Text style={styles.quickStatValue}>
               {dtfData?.labels?.length || 0}
@@ -276,7 +277,7 @@ const RevDashboardScreen = ({ navigation }) => {
             <Text style={styles.quickStatLabel}>Days Active</Text>
           </View>
 
-          <View style={[styles.quickStatCard, { backgroundColor: '#E8EAF6' }]}>
+          <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
             <Text style={styles.quickStatIcon}>📈</Text>
             <Text style={styles.quickStatValue}>
               Rs.{' '}
@@ -293,7 +294,7 @@ const RevDashboardScreen = ({ navigation }) => {
 
       {activeTab === 'degsign' && (
         <View style={styles.quickStatsContainer}>
-          <View style={[styles.quickStatCard, { backgroundColor: '#FCE4EC' }]}>
+          <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
             <Text style={styles.quickStatIcon}>🎨</Text>
             <Text style={styles.quickStatValue}>
               Rs. {totalDegsignSales.toLocaleString()}
@@ -301,7 +302,7 @@ const RevDashboardScreen = ({ navigation }) => {
             <Text style={styles.quickStatLabel}>Total Degsign</Text>
           </View>
 
-          <View style={[styles.quickStatCard, { backgroundColor: '#F3E5F5' }]}>
+          <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
             <Text style={styles.quickStatIcon}>📊</Text>
             <Text style={styles.quickStatValue}>
               {degsignData?.labels?.length || 0}
@@ -309,7 +310,7 @@ const RevDashboardScreen = ({ navigation }) => {
             <Text style={styles.quickStatLabel}>Days Active</Text>
           </View>
 
-          <View style={[styles.quickStatCard, { backgroundColor: '#E8EAF6' }]}>
+          <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
             <Text style={styles.quickStatIcon}>📈</Text>
             <Text style={styles.quickStatValue}>
               Rs.{' '}
@@ -361,7 +362,7 @@ const RevDashboardScreen = ({ navigation }) => {
         <>
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#007AFF" />
+              <ActivityIndicator size="large" color={C.accent} />
               <Text style={styles.loadingText}>Loading chart...</Text>
             </View>
           ) : error ? (
@@ -418,7 +419,7 @@ const RevDashboardScreen = ({ navigation }) => {
         <>
           {dtfLoading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#9C27B0" />
+              <ActivityIndicator size="large" color={C.accent} />
               <Text style={styles.loadingText}>Loading DTF chart...</Text>
             </View>
           ) : dtfError ? (
@@ -473,7 +474,7 @@ const RevDashboardScreen = ({ navigation }) => {
         <>
           {degsignLoading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#9C27B0" />
+              <ActivityIndicator size="large" color={C.accent} />
               <Text style={styles.loadingText}>Loading Degsign chart...</Text>
             </View>
           ) : degsignError ? (
@@ -548,11 +549,11 @@ const RevDashboardScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   dashboardIntro: {
     fontSize: 13,
-    color: '#777',
+    color: C.textSecondary,
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 4,
@@ -582,11 +583,11 @@ const styles = StyleSheet.create({
   quickStatValue: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
   },
   quickStatLabel: {
     fontSize: 10,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 4,
     textTransform: 'uppercase',
   },
@@ -595,7 +596,7 @@ const styles = StyleSheet.create({
   tabContainer: {
     marginHorizontal: 16,
     marginVertical: 12,
-    backgroundColor: '#e9ecef',
+    backgroundColor: C.divider,
     borderRadius: 12,
     padding: 4,
   },
@@ -614,7 +615,7 @@ const styles = StyleSheet.create({
     minWidth: 110,
   },
   tabActive: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -624,15 +625,15 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: C.textSecondary,
   },
   tabTextActive: {
-    color: '#007AFF',
+    color: C.accent,
   },
 
   // Loading
   loadingContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 16,
     padding: 60,
     marginHorizontal: 16,
@@ -647,12 +648,12 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
   },
 
   // Error
   errorContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 16,
     padding: 40,
     marginHorizontal: 16,
@@ -670,25 +671,25 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#666',
+    color: C.textSecondary,
     marginBottom: 16,
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   retryButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontWeight: '600',
     fontSize: 14,
   },
 
   // Empty
   emptyContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 16,
     padding: 40,
     marginHorizontal: 16,
@@ -706,13 +707,13 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
+    color: C.textSecondary,
     textAlign: 'center',
   },
 
   // Recent Section
   recentSection: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     marginHorizontal: 16,
     marginTop: 8,
     borderRadius: 16,
@@ -726,7 +727,7 @@ const styles = StyleSheet.create({
   recentTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
     marginBottom: 12,
   },
   recentItem: {
@@ -735,7 +736,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
+    borderBottomColor: C.divider,
   },
   recentLeft: {
     flexDirection: 'row',
@@ -743,7 +744,7 @@ const styles = StyleSheet.create({
   },
   recentDateText: {
     fontSize: 14,
-    color: '#333',
+    color: C.textPrimary,
     fontWeight: '500',
   },
   recentValue: {

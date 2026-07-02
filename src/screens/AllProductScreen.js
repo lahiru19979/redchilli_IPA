@@ -8,10 +8,12 @@ import {
   RefreshControl,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {productAPI} from '../api/apiClient';
 import ProductCard from '../components/AllProductCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { C } from '../utils/theme';
 
 const AllProductScreen = ({navigation}) => {
   const [products, setProducts] = useState([]);
@@ -101,11 +103,46 @@ const AllProductScreen = ({navigation}) => {
     );
   });
 
+  const handleToggleStatus = product => {
+    const activating = product.status !== 1;
+    Alert.alert(
+      activating ? 'Activate Product' : 'Deactivate Product',
+      `Are you sure you want to ${activating ? 'activate' : 'deactivate'} "${
+        product.product_name || 'this product'
+      }"?`,
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: activating ? 'Activate' : 'Deactivate',
+          style: activating ? 'default' : 'destructive',
+          onPress: async () => {
+            try {
+              const res = await productAPI.toggleProductStatus(product.id);
+              if (res.data?.status === 'success') {
+                const newStatus = res.data.data.new_status;
+                setProducts(prev =>
+                  prev.map(p =>
+                    p.id === product.id ? {...p, status: newStatus} : p,
+                  ),
+                );
+              } else {
+                Alert.alert('Error', res.data?.message || 'Could not update status.');
+              }
+            } catch (e) {
+              Alert.alert('Error', 'Could not update the product status.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const renderProduct = ({item, index}) => (
     <ProductCard
       product={item}
       onPress={() => navigation.navigate('ProductDetail', {product: item})}
       onEdit={() => navigation.navigate('EditProduct', {product: item})}
+      onToggleStatus={() => handleToggleStatus(item)}
     />
   );
 
@@ -113,7 +150,7 @@ const AllProductScreen = ({navigation}) => {
     if (!loadingMore) return null;
     return (
       <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color="#007AFF" />
+        <ActivityIndicator size="small" color={C.accent} />
         <Text style={styles.loadingMoreText}>Loading more...</Text>
       </View>
     );
@@ -131,7 +168,7 @@ const AllProductScreen = ({navigation}) => {
         <TextInput
           style={styles.searchInput}
           placeholder="Search by name, code, model..."
-          placeholderTextColor="#999"
+          placeholderTextColor={C.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -161,8 +198,8 @@ const AllProductScreen = ({navigation}) => {
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh}
-            colors={['#007AFF']}
-            tintColor="#007AFF"
+            colors={[C.accent]}
+            tintColor={C.accent}
           />
         }
         onEndReached={loadMore}
@@ -196,18 +233,18 @@ const AllProductScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 8,
     borderRadius: 12,
     paddingHorizontal: 12,
-    shadowColor: '#000',
+    shadowColor: C.textPrimary,
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -221,14 +258,14 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     fontSize: 16,
-    color: '#333',
+    color: C.textPrimary,
   },
   clearButton: {
     padding: 8,
   },
   clearButtonText: {
     fontSize: 18,
-    color: '#999',
+    color: C.textSecondary,
     fontWeight: '600',
   },
   countContainer: {
@@ -237,7 +274,7 @@ const styles = StyleSheet.create({
   },
   countText: {
     fontSize: 13,
-    color: '#666',
+    color: C.textSecondary,
     fontWeight: '500',
   },
   listContent: {
@@ -257,11 +294,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 32,
@@ -275,7 +312,7 @@ const styles = StyleSheet.create({
   loadingMoreText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
   },
   fab: {
     position: 'absolute',
@@ -284,10 +321,10 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#007AFF',
+    shadowColor: C.accent,
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.4,
     shadowRadius: 8,
@@ -295,7 +332,7 @@ const styles = StyleSheet.create({
   },
   fabText: {
     fontSize: 32,
-    color: '#fff',
+    color: C.surface,
     fontWeight: '300',
     marginTop: -2,
   },

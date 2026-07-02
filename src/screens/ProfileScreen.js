@@ -11,6 +11,7 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useAuth} from '../context/AuthContext';
 import {authAPI} from '../api/apiClient';
+import { C } from '../utils/theme';
 
 const ProfileScreen = () => {
   const insets = useSafeAreaInsets();
@@ -85,7 +86,7 @@ const ProfileScreen = () => {
             value={firstName}
             onChangeText={setFirstName}
             placeholder="Enter first name"
-            placeholderTextColor="#999"
+            placeholderTextColor={C.textSecondary}
           />
 
           <Text style={styles.label}>Last Name</Text>
@@ -94,7 +95,7 @@ const ProfileScreen = () => {
             value={lastName}
             onChangeText={setLastName}
             placeholder="Enter last name"
-            placeholderTextColor="#999"
+            placeholderTextColor={C.textSecondary}
           />
 
           <Text style={styles.label}>Email</Text>
@@ -103,7 +104,7 @@ const ProfileScreen = () => {
             value={email}
             onChangeText={setEmail}
             placeholder="Enter your email"
-            placeholderTextColor="#999"
+            placeholderTextColor={C.textSecondary}
             keyboardType="email-address"
             autoCapitalize="none"
           />
@@ -114,7 +115,7 @@ const ProfileScreen = () => {
             value={phone}
             onChangeText={setPhone}
             placeholder="Enter phone number"
-            placeholderTextColor="#999"
+            placeholderTextColor={C.textSecondary}
             keyboardType="phone-pad"
           />
 
@@ -181,10 +182,10 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   header: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     alignItems: 'center',
     paddingVertical: 30,
     paddingTop: 50,
@@ -193,7 +194,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -201,12 +202,12 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: C.accent,
   },
   name: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#fff',
+    color: C.surface,
   },
   email: {
     fontSize: 14,
@@ -219,7 +220,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   menuSection: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     marginTop: 20,
     borderRadius: 12,
     marginHorizontal: 16,
@@ -230,7 +231,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: C.divider,
   },
   menuIcon: {
     fontSize: 20,
@@ -239,14 +240,14 @@ const styles = StyleSheet.create({
   menuText: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: C.textPrimary,
   },
   menuArrow: {
     fontSize: 20,
-    color: '#ccc',
+    color: C.textPlaceholder,
   },
   editSection: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     marginTop: 20,
     padding: 16,
     marginHorizontal: 16,
@@ -255,18 +256,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
     borderRadius: 8,
     padding: 14,
     fontSize: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    color: '#333',
+    borderColor: C.border,
+    color: C.textPrimary,
   },
   editButtons: {
     flexDirection: 'row',
@@ -278,12 +279,12 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#007AFF',
+    borderColor: C.accent,
     marginRight: 8,
     alignItems: 'center',
   },
   cancelButtonText: {
-    color: '#007AFF',
+    color: C.accent,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -291,20 +292,20 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 14,
     borderRadius: 8,
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     marginLeft: 8,
     alignItems: 'center',
   },
   saveButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: C.textPlaceholder,
   },
   saveButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 16,
     fontWeight: '600',
   },
   logoutButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: C.danger,
     marginHorizontal: 16,
     marginTop: 30,
     padding: 16,
@@ -312,13 +313,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoutButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 16,
     fontWeight: '600',
   },
   version: {
     textAlign: 'center',
-    color: '#999',
+    color: C.textSecondary,
     marginTop: 20,
     marginBottom: 30,
   },

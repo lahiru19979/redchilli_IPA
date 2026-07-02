@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { invoiceAPI } from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { C } from '../utils/theme';
 
 // Define action cards with required permissions
 // Use the EXACT permission names from your database
@@ -22,7 +23,7 @@ const ACTION_CARDS = [
     icon: '🧾',
     title: 'Invoices',
     subtitle: 'View & create invoices',
-    color: '#007AFF',
+    color: C.accent,
     screen: 'Invoice',
     permission: 'view_CRM_management',
   },
@@ -32,7 +33,7 @@ const ACTION_CARDS = [
     icon: '📦',
     title: 'Products',
     subtitle: 'Add a new product',
-    color: '#4CAF50',
+    color: C.success,
     screen: 'AllProducts_screen',
     permission: 'add_products',
   },
@@ -41,7 +42,7 @@ const ACTION_CARDS = [
     icon: '🗃️',
     title: 'Inventories',
     subtitle: 'View & manage stock',
-    color: '#FF9800',
+    color: C.warning,
     screen: 'AllStocks',
     permission: 'view_inventory',
   },
@@ -50,7 +51,7 @@ const ACTION_CARDS = [
     icon: '📊',
     title: 'Revenue Reports',
     subtitle: 'View detailed reports',
-    color: '#9C27B0',
+    color: C.accent,
     screen: 'reports',
     permission: 'View revenue dashboard',
   },
@@ -59,7 +60,7 @@ const ACTION_CARDS = [
     icon: '💰',
     title: 'Cost Module',
     subtitle: 'View detailed cost Module',
-    color: '#27b02e',
+    color: C.success,
     screen: 'Cost',
     permission: 'view_finance_master',
   },
@@ -72,7 +73,7 @@ const STAT_CARDS = [
     title: "Today's Sales",
     key: 'today_sales',
     prefix: 'Rs ',
-    color: '#4CAF50',
+    color: C.success,
     permission: 'View revenue dashboard',
   },
   {
@@ -80,7 +81,7 @@ const STAT_CARDS = [
     title: 'Total Products',
     key: 'total_products',
     prefix: '',
-    color: '#2196F3',
+    color: C.accent,
     permission: 'view_products',
   },
   {
@@ -88,7 +89,7 @@ const STAT_CARDS = [
     title: 'Pending Orders',
     key: 'pending_orders',
     prefix: '',
-    color: '#FF9800',
+    color: C.warning,
     permission: 'View CK invoices',
   },
   {
@@ -96,7 +97,7 @@ const STAT_CARDS = [
     title: 'Total Customers',
     key: 'total_customers',
     prefix: '',
-    color: '#9C27B0',
+    color: C.accent,
     permission: 'view_customers',
   },
 ];
@@ -261,12 +262,12 @@ console.log('Can access Invoice module:', hasPermission('Invoice module'));
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
 
   // Header Styles
   header: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     padding: 24,
     paddingTop: 50,
     paddingBottom: 30,
@@ -277,7 +278,7 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: C.surface,
   },
   date: {
     fontSize: 14,
@@ -288,13 +289,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     right: 0,
-    backgroundColor: '#FFD700',
+    backgroundColor: C.warning,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
   },
   adminBadgeText: {
-    color: '#333',
+    color: C.textPrimary,
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -303,7 +304,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
     marginBottom: 12,
   },
 
@@ -318,13 +319,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   statCard: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 12,
     padding: 16,
     width: '48%',
     marginBottom: 12,
     borderLeftWidth: 4,
-    shadowColor: '#000',
+    shadowColor: C.textPrimary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -333,11 +334,11 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
   },
   statTitle: {
     fontSize: 13,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 4,
   },
 
@@ -351,13 +352,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   actionCard: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 12,
     padding: 16,
     width: '48%',
     marginBottom: 14,
     borderLeftWidth: 4,
-    shadowColor: '#000',
+    shadowColor: C.textPrimary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -375,11 +376,11 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   actionSubtitle: {
     fontSize: 11,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 2,
   },
 
@@ -387,9 +388,9 @@ const styles = StyleSheet.create({
   noPermissionsContainer: {
     padding: 40,
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: C.textPrimary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -401,7 +402,7 @@ const styles = StyleSheet.create({
   },
   noPermissionsText: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },

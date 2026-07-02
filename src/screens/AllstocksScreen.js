@@ -13,6 +13,7 @@ import {
 import {inventoryAPI} from '../api/apiClient';
 import AllInventoryCard from '../components/AllInventoryCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { C } from '../utils/theme';
 
 const AllStocksScreen = ({navigation}) => {
   const [inventories, setInventories] = useState([]);
@@ -114,7 +115,7 @@ const AllStocksScreen = ({navigation}) => {
     if (!loadingMore) return null;
     return (
       <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color="#007AFF" />
+        <ActivityIndicator size="small" color={C.accent} />
         <Text style={styles.loadingMoreText}>Loading more...</Text>
       </View>
     );
@@ -132,7 +133,7 @@ const AllStocksScreen = ({navigation}) => {
         <TextInput
           style={styles.searchInput}
           placeholder="Search by code, description, color, size..."
-          placeholderTextColor="#999"
+          placeholderTextColor={C.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -172,7 +173,7 @@ const AllStocksScreen = ({navigation}) => {
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh}
-            colors={['#007AFF']}
+            colors={[C.accent]}
           />
         }
         onEndReached={loadMore}
@@ -205,18 +206,18 @@ const AllStocksScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 8,
     borderRadius: 12,
     paddingHorizontal: 12,
-    shadowColor: '#000',
+    shadowColor: C.textPrimary,
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -230,23 +231,23 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     fontSize: 16,
-    color: '#333',
+    color: C.textPrimary,
   },
   clearButton: {
     padding: 8,
   },
   clearButtonText: {
     fontSize: 18,
-    color: '#999',
+    color: C.textSecondary,
   },
   summaryContainer: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     marginHorizontal: 16,
     marginBottom: 8,
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: C.textPrimary,
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -258,16 +259,16 @@ const styles = StyleSheet.create({
   },
   summaryDivider: {
     width: 1,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: C.border,
   },
   summaryValue: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: C.accent,
   },
   summaryLabel: {
     fontSize: 12,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 4,
   },
   listContent: {
@@ -286,11 +287,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 32,
@@ -304,7 +305,7 @@ const styles = StyleSheet.create({
   loadingMoreText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
   },
   fab: {
     position: 'absolute',
@@ -313,10 +314,10 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: C.textPrimary,
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.3,
     shadowRadius: 6,

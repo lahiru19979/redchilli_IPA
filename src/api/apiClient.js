@@ -94,6 +94,7 @@ export const productAPI = {
   getProduct: id => apiClient.get(`/products/${id}`),
   createProduct: data => apiClient.post('/products', data),
   updateProduct: (id, data) => apiClient.post(`/products/${id}`, data),
+  toggleProductStatus: id => apiClient.post(`/products/${id}/toggle-status`),
 };
 
 export const inventoryAPI = {

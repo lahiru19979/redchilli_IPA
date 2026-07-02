@@ -17,6 +17,7 @@ import ProductItem from '../components/ProductItem';
 import {getColorName, getColorByID} from '../utils/colors';
 import {getSizeByID} from '../utils/sizes'; // 1. Import getSizeByID
 import invoiceStore from '../store/invoiceStore';
+import { C } from '../utils/theme';
 
 // Customer Types
 const CUSTOMER_TYPES = [
@@ -364,7 +365,7 @@ const CreateInvoiceScreen = ({navigation}) => {
           <View>
             <Text style={styles.invoiceNoLabel}>Invoice Number</Text>
             {loadingInvoiceNo ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={C.surface} />
             ) : (
               <Text style={styles.invoiceNoValue}>{invoiceNo}</Text>
             )}
@@ -578,7 +579,7 @@ const CreateInvoiceScreen = ({navigation}) => {
               <TextInput
                 style={styles.phoneSearchInput}
                 placeholder="Search by phone or name..."
-                placeholderTextColor="#999"
+                placeholderTextColor={C.textSecondary}
                 value={phoneSearch}
                 onChangeText={setPhoneSearch}
                 autoFocus
@@ -591,7 +592,7 @@ const CreateInvoiceScreen = ({navigation}) => {
             </View>
             {loadingCustomers ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#007AFF" />
+                <ActivityIndicator size="large" color={C.accent} />
                 <Text style={styles.loadingText}>Loading customers...</Text>
               </View>
             ) : (
@@ -704,7 +705,7 @@ const CreateInvoiceScreen = ({navigation}) => {
                             {
                               backgroundColor: getColorByID(item.color).code,
                               borderWidth: item.color === 'white' ? 1 : 0,
-                              borderColor: '#ddd',
+                              borderColor: C.border,
                             },
                           ]}
                         />
@@ -770,7 +771,7 @@ const CreateInvoiceScreen = ({navigation}) => {
             <TextInput
               style={styles.modalSearchInput}
               placeholder="Search by code or name..."
-              placeholderTextColor="#999"
+              placeholderTextColor={C.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus
@@ -778,7 +779,7 @@ const CreateInvoiceScreen = ({navigation}) => {
           </View>
           {loadingProducts ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#007AFF" />
+              <ActivityIndicator size="large" color={C.accent} />
               <Text style={styles.loadingText}>Loading products...</Text>
             </View>
           ) : (
@@ -800,7 +801,7 @@ const CreateInvoiceScreen = ({navigation}) => {
       {loading && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#007AFF" />
+            <ActivityIndicator size="large" color={C.accent} />
             <Text style={styles.loadingBoxText}>Creating Invoice...</Text>
           </View>
         </View>
@@ -813,14 +814,14 @@ const styles = StyleSheet.create({
     // ... (All styles remain exactly the same as your original code)
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   scrollContent: {
     flex: 1,
   },
   // Invoice Number Section
   invoiceNoSection: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -833,7 +834,7 @@ const styles = StyleSheet.create({
   invoiceNoValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: C.surface,
     marginTop: 2,
   },
   invoiceDateContainer: {
@@ -842,12 +843,12 @@ const styles = StyleSheet.create({
   invoiceDateValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: C.surface,
     marginTop: 2,
   },
   // Section
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     marginTop: 12,
     padding: 16,
   },
@@ -866,16 +867,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   clearCustomerText: {
     fontSize: 14,
-    color: '#F44336',
+    color: C.danger,
     fontWeight: '500',
   },
   // Customer ID Badge
   customerIdBadge: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: C.accentLight,
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -884,7 +885,7 @@ const styles = StyleSheet.create({
   },
   customerIdText: {
     fontSize: 14,
-    color: '#1976D2',
+    color: C.accent,
     fontWeight: '600',
   },
   // Input
@@ -894,53 +895,53 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#666',
+    color: C.textSecondary,
     marginBottom: 8,
   },
   // Phone Selector
   phoneSelector: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
     borderRadius: 10,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: C.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   phoneSelectorText: {
     fontSize: 16,
-    color: '#333',
+    color: C.textPrimary,
   },
   phoneSelectorPlaceholder: {
-    color: '#999',
+    color: C.textSecondary,
   },
   phoneSelectorArrow: {
     fontSize: 12,
-    color: '#666',
+    color: C.textSecondary,
   },
   // Readonly Field
   readonlyField: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: C.divider,
     borderRadius: 10,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: C.border,
   },
   readonlyFieldMultiline: {
     minHeight: 70,
   },
   readonlyText: {
     fontSize: 16,
-    color: '#333',
+    color: C.textPrimary,
   },
   // Customer Type
   typeSelector: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
     borderRadius: 10,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: C.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -957,18 +958,18 @@ const styles = StyleSheet.create({
   },
   typeSelectorText: {
     fontSize: 16,
-    color: '#333',
+    color: C.textPrimary,
   },
   typeSelectorArrow: {
     fontSize: 12,
-    color: '#666',
+    color: C.textSecondary,
   },
   typeDropdown: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 10,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: C.border,
     elevation: 3,
   },
   typeDropdownItem: {
@@ -976,23 +977,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: C.divider,
   },
   typeDropdownItemActive: {
-    backgroundColor: '#f0f8ff',
+    backgroundColor: C.accentLight,
   },
   typeDropdownItemText: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: C.textPrimary,
   },
   typeDropdownItemTextActive: {
     fontWeight: '600',
-    color: '#007AFF',
+    color: C.accent,
   },
   typeCheckmark: {
     fontSize: 16,
-    color: '#007AFF',
+    color: C.accent,
     fontWeight: 'bold',
   },
   // Add Buttons
@@ -1001,24 +1002,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   addButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: C.success,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
   },
   addButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontWeight: '600',
     fontSize: 14,
   },
   scanButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
   },
   scanButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -1033,17 +1034,17 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
+    color: C.textSecondary,
     fontWeight: '500',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: C.textSecondary,
     marginTop: 4,
   },
   // Summary Card
   summaryCard: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     marginTop: 12,
     marginHorizontal: 16,
     padding: 16,
@@ -1052,7 +1053,7 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
     marginBottom: 12,
   },
   summaryRow: {
@@ -1060,57 +1061,57 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: C.divider,
   },
   summaryRowTotal: {
     borderBottomWidth: 0,
     marginTop: 8,
     paddingTop: 12,
     borderTopWidth: 2,
-    borderTopColor: '#eee',
+    borderTopColor: C.divider,
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   summaryLabelTotal: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   summaryValueTotal: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: C.success,
   },
   // Clear Cart
   clearCartButton: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     marginHorizontal: 16,
     marginTop: 12,
     padding: 14,
     borderRadius: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ffcdd2',
+    borderColor: C.dangerLight,
   },
   clearCartButtonText: {
     fontSize: 14,
-    color: '#F44336',
+    color: C.danger,
     fontWeight: '500',
   },
   // Bottom Section
   bottomSection: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     padding: 16,
     paddingBottom: 32,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: C.divider,
   },
   totalRow: {
     flexDirection: 'row',
@@ -1121,29 +1122,29 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   totalQty: {
     fontSize: 12,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 2,
   },
   totalAmount: {
     fontSize: 26,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: C.success,
   },
   createButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     padding: 18,
     borderRadius: 14,
     alignItems: 'center',
   },
   createButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: C.textPlaceholder,
   },
   createButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 18,
     fontWeight: '700',
   },
@@ -1155,7 +1156,7 @@ const styles = StyleSheet.create({
   },
   // Phone Modal
   phoneModal: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '80%',
@@ -1166,24 +1167,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: C.divider,
   },
   phoneModalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
   },
   phoneModalClose: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: C.divider,
     justifyContent: 'center',
     alignItems: 'center',
   },
   phoneModalCloseText: {
     fontSize: 18,
-    color: '#666',
+    color: C.textSecondary,
   },
   phoneSearchContainer: {
     padding: 16,
@@ -1192,13 +1193,13 @@ const styles = StyleSheet.create({
   },
   phoneSearchInput: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    color: '#333',
+    borderColor: C.border,
+    color: C.textPrimary,
   },
   phoneSearchClear: {
     position: 'absolute',
@@ -1207,7 +1208,7 @@ const styles = StyleSheet.create({
   },
   phoneSearchClearText: {
     fontSize: 16,
-    color: '#999',
+    color: C.textSecondary,
   },
   // Customer List
   customerList: {
@@ -1217,7 +1218,7 @@ const styles = StyleSheet.create({
   customerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: C.bg,
     padding: 14,
     borderRadius: 12,
     marginBottom: 10,
@@ -1225,8 +1226,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   customerItemSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#f0f8ff',
+    borderColor: C.accent,
+    backgroundColor: C.accentLight,
   },
   customerItemLeft: {
     marginRight: 14,
@@ -1235,52 +1236,52 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
   customerAvatarText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: C.surface,
   },
   customerItemContent: {
     flex: 1,
   },
   customerItemCusId: {
     fontSize: 11,
-    color: '#007AFF',
+    color: C.accent,
     fontWeight: '600',
   },
   customerItemName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   customerItemPhone: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
   },
   customerItemAddress: {
     fontSize: 12,
-    color: '#999',
+    color: C.textSecondary,
   },
   customerItemCheck: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
   customerItemCheckText: {
     fontSize: 16,
-    color: '#fff',
+    color: C.surface,
     fontWeight: 'bold',
   },
   // Preview Modal
   previewModal: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '90%',
@@ -1292,29 +1293,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: C.divider,
   },
   previewTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
   },
   previewClose: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: C.divider,
     justifyContent: 'center',
     alignItems: 'center',
   },
   previewCloseText: {
     fontSize: 18,
-    color: '#666',
+    color: C.textSecondary,
   },
   previewSection: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: C.divider,
   },
   previewInvoiceNo: {
     flexDirection: 'row',
@@ -1323,22 +1324,22 @@ const styles = StyleSheet.create({
   },
   previewInvoiceNoLabel: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
     marginRight: 8,
   },
   previewInvoiceNoValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: C.accent,
   },
   previewDate: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
   },
   previewSectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
     marginBottom: 12,
   },
   previewInfoRow: {
@@ -1348,12 +1349,12 @@ const styles = StyleSheet.create({
   previewInfoLabel: {
     width: 80,
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
   },
   previewInfoValue: {
     flex: 1,
     fontSize: 14,
-    color: '#333',
+    color: C.textPrimary,
     fontWeight: '500',
   },
   previewTypeBadge: {
@@ -1363,11 +1364,11 @@ const styles = StyleSheet.create({
   },
   previewTypeBadgeText: {
     fontSize: 12,
-    color: '#fff',
+    color: C.surface,
     fontWeight: '600',
   },
   previewItem: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: C.bg,
     padding: 12,
     borderRadius: 10,
     marginBottom: 10,
@@ -1379,18 +1380,18 @@ const styles = StyleSheet.create({
   },
   previewItemNo: {
     fontSize: 12,
-    color: '#999',
+    color: C.textSecondary,
     marginRight: 8,
   },
   previewItemCode: {
     fontSize: 12,
-    color: '#007AFF',
+    color: C.accent,
     fontWeight: '600',
   },
   previewItemName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
     marginBottom: 6,
   },
   previewItemDetails: {
@@ -1400,7 +1401,7 @@ const styles = StyleSheet.create({
   },
   previewItemDetail: {
     fontSize: 12,
-    color: '#666',
+    color: C.textSecondary,
   },
   previewItemColorContainer: {
     flexDirection: 'row',
@@ -1418,24 +1419,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: C.divider,
   },
   previewItemQty: {
     fontSize: 13,
-    color: '#666',
+    color: C.textSecondary,
   },
   previewItemPrice: {
     fontSize: 13,
-    color: '#666',
+    color: C.textSecondary,
   },
   previewItemTotal: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: C.success,
   },
   previewSummary: {
     padding: 16,
-    backgroundColor: '#f0f8ff',
+    backgroundColor: C.accentLight,
   },
   previewSummaryRow: {
     flexDirection: 'row',
@@ -1446,56 +1447,56 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 12,
     borderTopWidth: 2,
-    borderTopColor: '#007AFF',
+    borderTopColor: C.accent,
   },
   previewSummaryLabel: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
   },
   previewSummaryValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   previewSummaryLabelTotal: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   previewSummaryValueTotal: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: C.accent,
   },
   previewActions: {
     flexDirection: 'row',
     padding: 16,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: C.divider,
   },
   previewCancelButton: {
     flex: 1,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
     alignItems: 'center',
   },
   previewCancelButtonText: {
     fontSize: 16,
-    color: '#666',
+    color: C.textSecondary,
     fontWeight: '600',
   },
   previewConfirmButton: {
     flex: 2,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#4CAF50',
+    backgroundColor: C.success,
     alignItems: 'center',
   },
   previewConfirmButtonText: {
     fontSize: 16,
-    color: '#fff',
+    color: C.surface,
     fontWeight: '700',
   },
   // Loading
@@ -1508,7 +1509,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#666',
+    color: C.textSecondary,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1517,7 +1518,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingBox: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     padding: 30,
     borderRadius: 16,
     alignItems: 'center',
@@ -1525,7 +1526,7 @@ const styles = StyleSheet.create({
   loadingBoxText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#333',
+    color: C.textPrimary,
     fontWeight: '500',
   },
   // No Results
@@ -1539,12 +1540,12 @@ const styles = StyleSheet.create({
   },
   noResultsText: {
     fontSize: 16,
-    color: '#666',
+    color: C.textSecondary,
   },
   // Product Modal
   modalContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1553,28 +1554,28 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 50,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: C.divider,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
   },
   modalCloseText: {
     fontSize: 24,
-    color: '#999',
+    color: C.textSecondary,
   },
   modalSearchContainer: {
     padding: 16,
   },
   modalSearchInput: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    color: '#333',
+    borderColor: C.border,
+    color: C.textPrimary,
   },
   searchProductsList: {
     padding: 16,
@@ -1584,7 +1585,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f8f8f8',
+    backgroundColor: C.bg,
     padding: 14,
     borderRadius: 10,
     marginBottom: 10,
@@ -1594,18 +1595,18 @@ const styles = StyleSheet.create({
   },
   searchProductCode: {
     fontSize: 12,
-    color: '#007AFF',
+    color: C.accent,
     fontWeight: '600',
   },
   searchProductName: {
     fontSize: 16,
-    color: '#333',
+    color: C.textPrimary,
     fontWeight: '500',
     marginTop: 2,
   },
   searchProductDetails: {
     fontSize: 12,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 4,
   },
   searchProductPrices: {
@@ -1614,7 +1615,7 @@ const styles = StyleSheet.create({
   searchProductPrice: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: C.success,
   },
 });
 

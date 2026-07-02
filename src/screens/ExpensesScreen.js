@@ -18,6 +18,7 @@ import { costAPI, MEDIA_BASE_URL } from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import SelectField from '../components/SelectField';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { C } from '../utils/theme';
 
 const COST_PERMISSION = 'view_finance_master'; // Permission to access the Cost module
 
@@ -284,7 +285,7 @@ const ExpensesScreen = () => {
             disabled={submitting}
           >
             {submitting ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={C.surface} />
             ) : (
               <Text style={styles.submitBtnText}>
                 {editingId ? 'Update Expense' : 'Save Expense'}
@@ -336,40 +337,40 @@ const ExpensesScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  container: { flex: 1, backgroundColor: C.bg },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
   },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#333' },
+  title: { fontSize: 20, fontWeight: 'bold', color: C.textPrimary },
   addBtn: {
-    backgroundColor: '#27b02e',
+    backgroundColor: C.success,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
-  addBtnText: { color: '#fff', fontWeight: '600' },
+  addBtnText: { color: C.surface, fontWeight: '600' },
   form: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     margin: 16,
     marginTop: 0,
     padding: 16,
     borderRadius: 12,
     elevation: 2,
   },
-  formTitle: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 12 },
+  formTitle: { fontSize: 16, fontWeight: '700', color: C.textPrimary, marginBottom: 12 },
   fieldLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: C.border,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -378,33 +379,33 @@ const styles = StyleSheet.create({
   },
   photoBtn: {
     borderWidth: 1,
-    borderColor: '#007AFF',
+    borderColor: C.accent,
     borderStyle: 'dashed',
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 16,
   },
-  photoBtnText: { color: '#007AFF', fontWeight: '600' },
+  photoBtnText: { color: C.accent, fontWeight: '600' },
   photoPreviewRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
   },
   photoPreview: { width: 60, height: 60, borderRadius: 8, marginRight: 12 },
-  removePhoto: { color: '#e53935', fontWeight: '600' },
+  removePhoto: { color: C.danger, fontWeight: '600' },
   submitBtn: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
   },
   submitBtnDisabled: { opacity: 0.6 },
-  submitBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  submitBtnText: { color: C.surface, fontWeight: '700', fontSize: 16 },
   list: { paddingHorizontal: 16 },
-  emptyText: { textAlign: 'center', color: '#999', marginTop: 30 },
+  emptyText: { textAlign: 'center', color: C.textSecondary, marginTop: 30 },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
@@ -418,25 +419,25 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 8,
     marginRight: 12,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: C.divider,
     alignItems: 'center',
     justifyContent: 'center',
   },
   thumbIcon: { fontSize: 22 },
   cardBody: { flex: 1 },
-  cardTitle: { fontSize: 15, fontWeight: '600', color: '#333' },
-  cardSub: { fontSize: 12, color: '#666', marginTop: 2 },
-  cardDate: { fontSize: 11, color: '#999', marginTop: 2 },
-  cardAmount: { fontSize: 16, fontWeight: 'bold', color: '#27b02e' },
+  cardTitle: { fontSize: 15, fontWeight: '600', color: C.textPrimary },
+  cardSub: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
+  cardDate: { fontSize: 11, color: C.textSecondary, marginTop: 2 },
+  cardAmount: { fontSize: 16, fontWeight: 'bold', color: C.success },
   lockedContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   lockedIcon: { fontSize: 48, marginBottom: 16 },
-  lockedText: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22 },
+  lockedText: { fontSize: 14, color: C.textSecondary, textAlign: 'center', lineHeight: 22 },
   bottomSpacing: { height: 30 },
 });
 

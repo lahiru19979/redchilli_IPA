@@ -1,7 +1,9 @@
 import React from 'react';
 import {View, Text, StyleSheet, TouchableOpacity, Image} from 'react-native';
+import {C} from '../utils/theme';
 
-const AllProductCard = ({product, onPress, onEdit}) => {
+const AllProductCard = ({product, onPress, onEdit, onToggleStatus}) => {
+  const isActive = product.status === 1;
   const BASE_URL = 'https://redchilli.lk/'; // Replace with your base URL
 
   const getStatusColor = (status) => {
@@ -131,7 +133,7 @@ const AllProductCard = ({product, onPress, onEdit}) => {
         </View>
       </View>
 
-      {/* Edit button + Arrow Icon */}
+      {/* Edit / status buttons + Arrow Icon */}
       <View style={styles.arrowContainer}>
         {onEdit && (
           <TouchableOpacity
@@ -140,6 +142,20 @@ const AllProductCard = ({product, onPress, onEdit}) => {
             activeOpacity={0.7}
             hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
             <Text style={styles.editBtnText}>✎ Edit</Text>
+          </TouchableOpacity>
+        )}
+        {onToggleStatus && (
+          <TouchableOpacity
+            style={[
+              styles.statusBtn,
+              {backgroundColor: isActive ? C.danger : C.success},
+            ]}
+            onPress={onToggleStatus}
+            activeOpacity={0.7}
+            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+            <Text style={styles.statusBtnText}>
+              {isActive ? 'Deactivate' : 'Activate'}
+            </Text>
           </TouchableOpacity>
         )}
         <Text style={styles.arrowIcon}>›</Text>
@@ -314,6 +330,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   editBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statusBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  statusBtnText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: '700',

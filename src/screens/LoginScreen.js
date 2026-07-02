@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useAuth} from '../context/AuthContext';
+import { C } from '../utils/theme';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
@@ -51,7 +52,7 @@ const LoginScreen = () => {
           <TextInput
             style={styles.input}
             placeholder="Enter your email"
-            placeholderTextColor="#999"
+            placeholderTextColor={C.textSecondary}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -63,7 +64,7 @@ const LoginScreen = () => {
           <TextInput
             style={styles.input}
             placeholder="Enter your password"
-            placeholderTextColor="#999"
+            placeholderTextColor={C.textSecondary}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -87,7 +88,7 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   flex: {
     flex: 1,
@@ -108,18 +109,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 8,
   },
   formContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 16,
     padding: 24,
-    shadowColor: '#000',
+    shadowColor: C.textPrimary,
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -128,31 +129,31 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
     borderRadius: 8,
     padding: 14,
     fontSize: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    color: '#333',
+    borderColor: C.border,
+    color: C.textPrimary,
   },
   loginButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
   },
   loginButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: C.textPlaceholder,
   },
   loginButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 18,
     fontWeight: '600',
   },

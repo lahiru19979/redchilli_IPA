@@ -19,6 +19,7 @@ import {
 import {productAPI} from '../api/apiClient';
 import {PRODUCT_COLORS, getColorByID} from '../utils/colors';
 import invoiceStore from '../store/invoiceStore';
+import {C} from '../utils/theme';
 
 const BarcodeScanScreen = ({navigation}) => {
   const [hasPermission, setHasPermission] = useState(false);
@@ -240,7 +241,7 @@ const BarcodeScanScreen = ({navigation}) => {
   if (!device) {
     return (
       <View style={styles.permissionContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={C.accent} />
         <Text style={styles.loadingText}>Loading camera...</Text>
       </View>
     );
@@ -289,7 +290,7 @@ const BarcodeScanScreen = ({navigation}) => {
         <View style={styles.statusContainer}>
           {isSearching ? (
             <>
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={C.surface} />
               <Text style={styles.statusText}>Searching product...</Text>
             </>
           ) : (
@@ -318,7 +319,7 @@ const BarcodeScanScreen = ({navigation}) => {
             <TextInput
               style={styles.manualInput}
               placeholder="e.g., ITEM0001"
-              placeholderTextColor="#999"
+              placeholderTextColor={C.textSecondary}
               value={manualCode}
               onChangeText={setManualCode}
               autoCapitalize="characters"
@@ -540,18 +541,18 @@ const styles = StyleSheet.create({
   permissionTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: C.surface,
     marginBottom: 12,
     textAlign: 'center',
   },
   permissionText: {
     fontSize: 16,
-    color: '#aaa',
+    color: C.textPlaceholder,
     textAlign: 'center',
     marginBottom: 32,
   },
   permissionButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     paddingHorizontal: 40,
     paddingVertical: 16,
     borderRadius: 12,
@@ -560,7 +561,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   permissionButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -569,7 +570,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   settingsButtonText: {
-    color: '#007AFF',
+    color: C.accent,
     fontSize: 16,
   },
   manualEntryButton: {
@@ -580,18 +581,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   manualEntryButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 16,
   },
   backButton: {
     paddingVertical: 12,
   },
   backButtonText: {
-    color: '#999',
+    color: C.textSecondary,
     fontSize: 16,
   },
   loadingText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 16,
     marginTop: 16,
   },
@@ -615,7 +616,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 24,
   },
   cartBadge: {
@@ -625,7 +626,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   cartBadgeText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -636,7 +637,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   manualButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 14,
     fontWeight: '500',
   },
@@ -686,7 +687,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   statusText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 18,
     fontWeight: '500',
     marginTop: 8,
@@ -702,7 +703,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   manualInputModal: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -711,17 +712,17 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
     marginBottom: 16,
   },
   manualInput: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
     borderRadius: 12,
     padding: 18,
     fontSize: 20,
     borderWidth: 2,
-    borderColor: '#007AFF',
-    color: '#333',
+    borderColor: C.accent,
+    color: C.textPrimary,
     textAlign: 'center',
     fontWeight: '600',
   },
@@ -734,28 +735,28 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
     alignItems: 'center',
   },
   cancelModalButtonText: {
     fontSize: 16,
-    color: '#666',
+    color: C.textSecondary,
     fontWeight: '600',
   },
   searchModalButton: {
     flex: 2,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     alignItems: 'center',
   },
   searchModalButtonText: {
     fontSize: 16,
-    color: '#fff',
+    color: C.surface,
     fontWeight: '600',
   },
   productModal: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -770,13 +771,13 @@ const styles = StyleSheet.create({
   },
   productCode: {
     fontSize: 14,
-    color: '#007AFF',
+    color: C.accent,
     fontWeight: '600',
   },
   productName: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
     marginTop: 4,
   },
   closeModalButton: {
@@ -784,7 +785,7 @@ const styles = StyleSheet.create({
   },
   closeModalText: {
     fontSize: 28,
-    color: '#999',
+    color: C.textSecondary,
   },
   productDetails: {
     flexDirection: 'row',
@@ -793,38 +794,38 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   detailChip: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: C.divider,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   detailChipText: {
     fontSize: 13,
-    color: '#666',
+    color: C.textSecondary,
     textTransform: 'capitalize',
   },
   costInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff3e0',
+    backgroundColor: C.warningLight,
     padding: 14,
     borderRadius: 12,
     marginBottom: 20,
   },
   costLabel: {
     fontSize: 14,
-    color: '#e65100',
+    color: C.warning,
   },
   costValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#e65100',
+    color: C.warning,
   },
   sectionLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
     marginBottom: 12,
     marginTop: 8,
   },
@@ -839,7 +840,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   colorOptionSelected: {
-    backgroundColor: '#f0f8ff',
+    backgroundColor: C.accentLight,
     borderRadius: 8,
   },
   colorCircle: {
@@ -852,7 +853,7 @@ const styles = StyleSheet.create({
   },
   colorCircleBorder: {
     borderWidth: 2,
-    borderColor: '#ddd',
+    borderColor: C.border,
   },
   checkMark: {
     fontSize: 18,
@@ -860,13 +861,13 @@ const styles = StyleSheet.create({
   },
   colorLabel: {
     fontSize: 10,
-    color: '#666',
+    color: C.textSecondary,
     textAlign: 'center',
   },
   selectedColorDisplay: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: C.bg,
     padding: 12,
     borderRadius: 10,
     marginBottom: 16,
@@ -880,38 +881,38 @@ const styles = StyleSheet.create({
   selectedColorText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   priceOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: C.bg,
     padding: 16,
     borderRadius: 12,
     marginBottom: 10,
     borderWidth: 2,
-    borderColor: '#e9ecef',
+    borderColor: C.border,
   },
   priceLabel: {
     fontSize: 13,
-    color: '#666',
+    color: C.textSecondary,
   },
   priceValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
     marginTop: 2,
   },
   profitBadge: {
-    backgroundColor: '#d4edda',
+    backgroundColor: C.successLight,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 16,
   },
   profitText: {
     fontSize: 14,
-    color: '#155724',
+    color: C.success,
     fontWeight: '600',
   },
   scanAnotherButton: {
@@ -923,7 +924,7 @@ const styles = StyleSheet.create({
   },
   scanAnotherButtonText: {
     fontSize: 16,
-    color: '#fff',
+    color: C.surface,
     fontWeight: '600',
   },
 });

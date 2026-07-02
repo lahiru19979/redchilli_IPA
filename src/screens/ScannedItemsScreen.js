@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import scannedItemsStore from '../store/scannedItemsStore';
 import {inventoryAPI} from '../api/apiClient';  // ✅ Your API
+import { C } from '../utils/theme';
 
 const ScannedItemsScreen = ({navigation}) => {
   const [items, setItems] = useState([]);
@@ -269,7 +270,7 @@ const ScannedItemsScreen = ({navigation}) => {
             onPress={handleSave}
             disabled={isSaving}>
             {isSaving ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={C.surface} />
             ) : (
               <Text style={styles.saveButtonText}>💾 Save ({totalQuantity})</Text>
             )}
@@ -348,46 +349,46 @@ const ScannedItemsScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     paddingTop: 60,
     paddingBottom: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: C.border,
   },
   backButton: {
     padding: 8,
   },
   backButtonText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: C.accent,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
   },
   clearButton: {
     padding: 8,
   },
   clearButtonText: {
     fontSize: 16,
-    color: '#FF3B30',
+    color: C.danger,
   },
   summaryContainer: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     padding: 16,
     marginTop: 12,
     marginHorizontal: 16,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: C.textPrimary,
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -399,26 +400,26 @@ const styles = StyleSheet.create({
   },
   summaryDivider: {
     width: 1,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: C.border,
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
     marginBottom: 4,
   },
   summaryValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: C.accent,
   },
   tableContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     marginTop: 12,
     marginHorizontal: 16,
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: C.textPrimary,
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -426,12 +427,12 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     paddingVertical: 14,
     paddingHorizontal: 8,
   },
   headerCell: {
-    color: '#fff',
+    color: C.surface,
     fontWeight: 'bold',
     fontSize: 14,
   },
@@ -440,15 +441,15 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: C.divider,
     alignItems: 'center',
   },
   tableRowEven: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: C.bg,
   },
   cell: {
     fontSize: 14,
-    color: '#333',
+    color: C.textPrimary,
   },
   cellNo: {
     width: 35,
@@ -474,20 +475,20 @@ const styles = StyleSheet.create({
   qtyButton: {
     width: 30,
     height: 30,
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
   },
   qtyButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 18,
     fontWeight: 'bold',
   },
   qtyValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
     minWidth: 40,
     textAlign: 'center',
     paddingVertical: 4,
@@ -511,59 +512,59 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
+    color: C.textSecondary,
     textAlign: 'center',
     marginBottom: 30,
   },
   scanButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     paddingHorizontal: 30,
     paddingVertical: 16,
     borderRadius: 12,
   },
   scanButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 18,
     fontWeight: '600',
   },
   bottomActions: {
     flexDirection: 'row',
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: C.border,
     gap: 12,
   },
   continueScanButton: {
     flex: 1,
-    backgroundColor: '#6c757d',
+    backgroundColor: C.textSecondary,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
   continueScanText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 16,
     fontWeight: '600',
   },
   saveButton: {
     flex: 1,
-    backgroundColor: '#28a745',
+    backgroundColor: C.success,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveButtonDisabled: {
-    backgroundColor: '#94d3a2',
+    backgroundColor: C.successLight,
   },
   saveButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -574,7 +575,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   editModal: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 16,
     padding: 24,
     width: '85%',
@@ -583,16 +584,16 @@ const styles = StyleSheet.create({
   editModalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
     textAlign: 'center',
     marginBottom: 8,
   },
   editModalBarcode: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
     padding: 8,
     borderRadius: 8,
   },
@@ -605,25 +606,25 @@ const styles = StyleSheet.create({
   editQtyButton: {
     width: 50,
     height: 50,
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
   },
   editQtyButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 28,
     fontWeight: 'bold',
   },
   editQtyInput: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
     minWidth: 80,
     textAlign: 'center',
     marginHorizontal: 16,
     borderBottomWidth: 2,
-    borderBottomColor: '#007AFF',
+    borderBottomColor: C.accent,
     paddingVertical: 8,
   },
   editModalButtons: {
@@ -634,24 +635,24 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 14,
     borderRadius: 10,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
     alignItems: 'center',
   },
   editCancelButtonText: {
     fontSize: 16,
-    color: '#666',
+    color: C.textSecondary,
     fontWeight: '600',
   },
   editSaveButton: {
     flex: 1,
     padding: 14,
     borderRadius: 10,
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     alignItems: 'center',
   },
   editSaveButtonText: {
     fontSize: 16,
-    color: '#fff',
+    color: C.surface,
     fontWeight: '600',
   },
 });

@@ -15,6 +15,7 @@ import {
   useCodeScanner,
 } from 'react-native-vision-camera';
 import scannedItemsStore from '../store/scannedItemsStore';
+import { C } from '../utils/theme';
 
 const InventoryScanScreen = ({navigation}) => {
   const [hasPermission, setHasPermission] = useState(false);
@@ -131,7 +132,7 @@ const InventoryScanScreen = ({navigation}) => {
   if (!device) {
     return (
       <View style={styles.permissionContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={C.accent} />
         <Text style={styles.loadingText}>Loading camera...</Text>
       </View>
     );
@@ -204,13 +205,13 @@ const InventoryScanScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: C.textPrimary,
   },
   permissionContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: C.textPrimary,
     padding: 24,
   },
   permissionIcon: {
@@ -220,18 +221,18 @@ const styles = StyleSheet.create({
   permissionTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: C.surface,
     marginBottom: 12,
     textAlign: 'center',
   },
   permissionText: {
     fontSize: 16,
-    color: '#aaa',
+    color: C.textPlaceholder,
     textAlign: 'center',
     marginBottom: 32,
   },
   permissionButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     paddingHorizontal: 40,
     paddingVertical: 16,
     borderRadius: 12,
@@ -240,7 +241,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   permissionButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -249,18 +250,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   settingsButtonText: {
-    color: '#007AFF',
+    color: C.accent,
     fontSize: 16,
   },
   backButton: {
     paddingVertical: 12,
   },
   backButtonText: {
-    color: '#999',
+    color: C.textSecondary,
     fontSize: 16,
   },
   loadingText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 16,
     marginTop: 16,
   },
@@ -284,11 +285,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 24,
   },
   titleText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   lastScannedCode: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -360,7 +361,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   statusText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 18,
     fontWeight: '500',
   },
@@ -371,7 +372,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   viewListButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     paddingHorizontal: 30,
     paddingVertical: 16,
     borderRadius: 12,
@@ -379,7 +380,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   viewListButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 18,
     fontWeight: '600',
   },

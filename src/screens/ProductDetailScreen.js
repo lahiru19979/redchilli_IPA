@@ -7,6 +7,7 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
+import { C } from '../utils/theme';
 
 const ProductDetailScreen = ({route, navigation}) => {
   const {product} = route.params;
@@ -55,7 +56,7 @@ const ProductDetailScreen = ({route, navigation}) => {
           <Text style={styles.productCode}>{product.product_code}</Text>
           <View style={[
             styles.statusBadge, 
-            {backgroundColor: product.status === 1 ? '#4CAF50' : '#FF5722'}
+            {backgroundColor: product.status === 1 ? C.success : C.warning}
           ]}>
             <Text style={styles.statusText}>
               {product.status === 1 ? 'Active' : 'Inactive'}
@@ -123,7 +124,7 @@ const ProductDetailScreen = ({route, navigation}) => {
           <View style={styles.badgesRow}>
             <View style={[
               styles.availBadge, 
-              {backgroundColor: product.cod_available ? '#E8F5E9' : '#FFEBEE'}
+              {backgroundColor: product.cod_available ? C.successLight : C.dangerLight}
             ]}>
               <Text style={styles.availText}>
                 {product.cod_available ? '✅' : '❌'} COD
@@ -131,7 +132,7 @@ const ProductDetailScreen = ({route, navigation}) => {
             </View>
             <View style={[
               styles.availBadge, 
-              {backgroundColor: product.return_accepted_available ? '#E8F5E9' : '#FFEBEE'}
+              {backgroundColor: product.return_accepted_available ? C.successLight : C.dangerLight}
             ]}>
               <Text style={styles.availText}>
                 {product.return_accepted_available ? '✅' : '❌'} Returns
@@ -139,7 +140,7 @@ const ProductDetailScreen = ({route, navigation}) => {
             </View>
             <View style={[
               styles.availBadge, 
-              {backgroundColor: product.warrenty_available ? '#E8F5E9' : '#FFEBEE'}
+              {backgroundColor: product.warrenty_available ? C.successLight : C.dangerLight}
             ]}>
               <Text style={styles.availText}>
                 {product.warrenty_available ? '✅' : '❌'} Warranty
@@ -184,11 +185,11 @@ const ProductDetailScreen = ({route, navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   imageGallery: {
     height: 300,
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
   },
   productImage: {
     width: 400,
@@ -204,7 +205,7 @@ const styles = StyleSheet.create({
   },
   productCode: {
     fontSize: 14,
-    color: '#007AFF',
+    color: C.accent,
     fontWeight: '600',
   },
   statusBadge: {
@@ -214,13 +215,13 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    color: '#fff',
+    color: C.surface,
     fontWeight: '600',
   },
   productName: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#333',
+    color: C.textPrimary,
     marginTop: 8,
   },
   priceSection: {
@@ -231,27 +232,27 @@ const styles = StyleSheet.create({
   },
   priceCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     padding: 12,
     borderRadius: 10,
     alignItems: 'center',
   },
   priceLabel: {
     fontSize: 11,
-    color: '#666',
+    color: C.textSecondary,
     marginBottom: 4,
   },
   priceValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#333',
+    color: C.textPrimary,
   },
   sellingPrice: {
-    color: '#4CAF50',
+    color: C.success,
     fontSize: 16,
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 10,
     padding: 16,
     marginTop: 16,
@@ -259,7 +260,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: C.textPrimary,
     marginBottom: 12,
   },
   detailRow: {
@@ -267,15 +268,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: C.divider,
   },
   detailLabel: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
   },
   detailValue: {
     fontSize: 14,
-    color: '#333',
+    color: C.textPrimary,
     fontWeight: '500',
   },
   badgesRow: {
@@ -293,11 +294,11 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
     lineHeight: 22,
   },
   editButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     marginHorizontal: 16,
     marginVertical: 20,
     paddingVertical: 16,
@@ -305,7 +306,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   editButtonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 16,
     fontWeight: '600',
   },

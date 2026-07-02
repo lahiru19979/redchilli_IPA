@@ -16,6 +16,7 @@ import { costAPI } from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import SelectField from '../components/SelectField';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { C } from '../utils/theme';
 
 const COST_PERMISSION = 'view_finance_master';
 
@@ -213,7 +214,7 @@ const CostGroupsScreen = () => {
             disabled={submitting}
           >
             {submitting ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={C.surface} />
             ) : (
               <Text style={styles.submitBtnText}>
                 {editingId ? 'Update' : 'Save'}
@@ -274,35 +275,35 @@ const CostGroupsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  container: { flex: 1, backgroundColor: C.bg },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
   },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#333' },
+  title: { fontSize: 20, fontWeight: 'bold', color: C.textPrimary },
   addBtn: {
-    backgroundColor: '#27b02e',
+    backgroundColor: C.success,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
-  addBtnText: { color: '#fff', fontWeight: '600' },
+  addBtnText: { color: C.surface, fontWeight: '600' },
   form: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     margin: 16,
     marginTop: 0,
     padding: 16,
     borderRadius: 12,
     elevation: 2,
   },
-  formTitle: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 12 },
-  fieldLabel: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 6 },
+  formTitle: { fontSize: 16, fontWeight: '700', color: C.textPrimary, marginBottom: 12 },
+  fieldLabel: { fontSize: 14, fontWeight: '600', color: C.textPrimary, marginBottom: 6 },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: C.border,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -314,34 +315,34 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: C.border,
     alignItems: 'center',
   },
-  toggleBtnActive: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
-  toggleText: { color: '#666', fontWeight: '600' },
-  toggleTextActive: { color: '#fff' },
+  toggleBtnActive: { backgroundColor: C.accent, borderColor: C.accent },
+  toggleText: { color: C.textSecondary, fontWeight: '600' },
+  toggleTextActive: { color: C.surface },
   submitBtn: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
   },
   submitBtnDisabled: { opacity: 0.6 },
-  submitBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  submitBtnText: { color: C.surface, fontWeight: '700', fontSize: 16 },
   searchWrap: { paddingHorizontal: 16, paddingBottom: 8 },
   searchInput: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: C.border,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 15,
   },
   list: { paddingHorizontal: 16 },
-  emptyText: { textAlign: 'center', color: '#999', marginTop: 30 },
+  emptyText: { textAlign: 'center', color: C.textSecondary, marginTop: 30 },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
@@ -350,8 +351,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardBody: { flex: 1 },
-  cardTitle: { fontSize: 15, fontWeight: '600', color: '#333' },
-  cardSub: { fontSize: 12, color: '#666', marginTop: 2 },
+  cardTitle: { fontSize: 15, fontWeight: '600', color: C.textPrimary },
+  cardSub: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
   badge: {
     fontSize: 11,
     fontWeight: '700',
@@ -361,18 +362,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginRight: 8,
   },
-  badgeActive: { backgroundColor: '#e6f7e9', color: '#27b02e' },
-  badgeInactive: { backgroundColor: '#fde8e8', color: '#e53935' },
-  editHint: { color: '#007AFF', fontSize: 13 },
+  badgeActive: { backgroundColor: C.successLight, color: C.success },
+  badgeInactive: { backgroundColor: C.dangerLight, color: C.danger },
+  editHint: { color: C.accent, fontSize: 13 },
   lockedContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   lockedIcon: { fontSize: 48, marginBottom: 16 },
-  lockedText: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22 },
+  lockedText: { fontSize: 14, color: C.textSecondary, textAlign: 'center', lineHeight: 22 },
   bottomSpacing: { height: 30 },
 });
 

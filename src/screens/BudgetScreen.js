@@ -17,6 +17,7 @@ import { costAPI } from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import SelectField from '../components/SelectField';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { C } from '../utils/theme';
 
 const COST_PERMISSION = 'view_finance_master';
 
@@ -302,7 +303,7 @@ const BudgetScreen = () => {
               disabled={submitting}
             >
               {submitting ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={C.surface} />
               ) : (
                 <Text style={styles.submitBtnText}>
                   {budgetEditingId ? 'Update Budget' : 'Save Budget'}
@@ -447,7 +448,7 @@ const BudgetScreen = () => {
                 disabled={submitting}
               >
                 {submitting ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={C.surface} />
                 ) : (
                   <Text style={styles.submitBtnText}>
                     {timelineEditingId ? 'Update' : 'Add'}
@@ -463,35 +464,35 @@ const BudgetScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  container: { flex: 1, backgroundColor: C.bg },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
   },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#333' },
+  title: { fontSize: 20, fontWeight: 'bold', color: C.textPrimary },
   addBtn: {
-    backgroundColor: '#27b02e',
+    backgroundColor: C.success,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
-  addBtnText: { color: '#fff', fontWeight: '600' },
+  addBtnText: { color: C.surface, fontWeight: '600' },
   form: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     margin: 16,
     marginTop: 0,
     padding: 16,
     borderRadius: 12,
     elevation: 2,
   },
-  formTitle: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 12 },
-  fieldLabel: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 6 },
+  formTitle: { fontSize: 16, fontWeight: '700', color: C.textPrimary, marginBottom: 12 },
+  fieldLabel: { fontSize: 14, fontWeight: '600', color: C.textPrimary, marginBottom: 6 },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: C.border,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -505,24 +506,24 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: C.border,
     alignItems: 'center',
   },
-  toggleBtnActive: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
-  toggleText: { color: '#666', fontWeight: '600' },
-  toggleTextActive: { color: '#fff' },
+  toggleBtnActive: { backgroundColor: C.accent, borderColor: C.accent },
+  toggleText: { color: C.textSecondary, fontWeight: '600' },
+  toggleTextActive: { color: C.surface },
   submitBtn: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
   },
   submitBtnDisabled: { opacity: 0.6 },
-  submitBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  submitBtnText: { color: C.surface, fontWeight: '700', fontSize: 16 },
   list: { paddingHorizontal: 16 },
-  emptyText: { textAlign: 'center', color: '#999', marginTop: 30 },
+  emptyText: { textAlign: 'center', color: C.textSecondary, marginTop: 30 },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
@@ -534,26 +535,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardInfo: { flex: 1, paddingRight: 8 },
-  cardTitle: { fontSize: 15, fontWeight: '600', color: '#333' },
-  cardSub: { fontSize: 12, color: '#666', marginTop: 2 },
+  cardTitle: { fontSize: 15, fontWeight: '600', color: C.textPrimary },
+  cardSub: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
   cardActions: {
     flexDirection: 'row',
     marginTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: C.divider,
     paddingTop: 8,
   },
   actionLink: { marginRight: 20 },
-  actionLinkText: { color: '#007AFF', fontWeight: '600', fontSize: 13 },
+  actionLinkText: { color: C.accent, fontWeight: '600', fontSize: 13 },
   timelineWrap: {
     marginTop: 10,
-    backgroundColor: '#f7f7f7',
+    backgroundColor: C.bgAlt,
     borderRadius: 8,
     padding: 8,
   },
   timelineHeader: {
     fontSize: 11,
-    color: '#888',
+    color: C.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
     marginBottom: 6,
@@ -563,7 +564,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -571,8 +572,8 @@ const styles = StyleSheet.create({
   },
   timelinePeriod: { flex: 1 },
   timelineMonthly: { width: 80 },
-  timelineMuted: { fontSize: 10, color: '#999' },
-  timelineValue: { fontSize: 13, color: '#333', fontWeight: '500' },
+  timelineMuted: { fontSize: 10, color: C.textSecondary },
+  timelineValue: { fontSize: 13, color: C.textPrimary, fontWeight: '500' },
   badge: {
     fontSize: 11,
     fontWeight: '700',
@@ -581,39 +582,39 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     overflow: 'hidden',
   },
-  badgeActive: { backgroundColor: '#e6f7e9', color: '#27b02e' },
-  badgeInactive: { backgroundColor: '#fde8e8', color: '#e53935' },
+  badgeActive: { backgroundColor: C.successLight, color: C.success },
+  badgeInactive: { backgroundColor: C.dangerLight, color: C.danger },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     padding: 20,
     paddingBottom: 30,
   },
-  modalSub: { fontSize: 13, color: '#666', marginBottom: 14 },
+  modalSub: { fontSize: 13, color: C.textSecondary, marginBottom: 14 },
   modalButtons: { flexDirection: 'row', marginTop: 8 },
   modalBtn: { flex: 1, marginHorizontal: 4 },
   modalCancel: {
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
-    backgroundColor: '#eee',
+    backgroundColor: C.divider,
   },
-  modalCancelText: { color: '#444', fontWeight: '700', fontSize: 16 },
+  modalCancelText: { color: C.textPrimary, fontWeight: '700', fontSize: 16 },
   lockedContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   lockedIcon: { fontSize: 48, marginBottom: 16 },
-  lockedText: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22 },
+  lockedText: { fontSize: 14, color: C.textSecondary, textAlign: 'center', lineHeight: 22 },
   bottomSpacing: { height: 30 },
 });
 

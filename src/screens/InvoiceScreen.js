@@ -12,6 +12,7 @@ import {
 import {invoiceAPI} from '../api/apiClient';
 import InvoiceCard from '../components/InvoiceCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { C } from '../utils/theme';
 
 const InvoiceScreen = ({navigation}) => {
   const [invoices, setInvoices] = useState([]);
@@ -111,7 +112,7 @@ const InvoiceScreen = ({navigation}) => {
     if (!loadingMore) return null;
     return (
       <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color="#007AFF" />
+        <ActivityIndicator size="small" color={C.accent} />
         <Text style={styles.loadingMoreText}>Loading more...</Text>
       </View>
     );
@@ -128,7 +129,7 @@ const InvoiceScreen = ({navigation}) => {
         <TextInput
           style={styles.searchInput}
           placeholder="Search by invoice #, name, phone..."
-          placeholderTextColor="#999"
+          placeholderTextColor={C.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -158,7 +159,7 @@ const InvoiceScreen = ({navigation}) => {
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh}
-            colors={['#007AFF']}
+            colors={[C.accent]}
           />
         }
         onEndReached={loadMore}
@@ -191,18 +192,18 @@ const InvoiceScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 8,
     borderRadius: 10,
     paddingHorizontal: 12,
-    shadowColor: '#000',
+    shadowColor: C.textPrimary,
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -212,14 +213,14 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     fontSize: 16,
-    color: '#333',
+    color: C.textPrimary,
   },
   clearButton: {
     padding: 8,
   },
   clearButtonText: {
     fontSize: 16,
-    color: '#999',
+    color: C.textSecondary,
   },
   countContainer: {
     paddingHorizontal: 16,
@@ -227,7 +228,7 @@ const styles = StyleSheet.create({
   },
   countText: {
     fontSize: 13,
-    color: '#666',
+    color: C.textSecondary,
   },
   listContent: {
     paddingBottom: 80,
@@ -245,11 +246,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 32,
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
   loadingMoreText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
   },
   fab: {
     position: 'absolute',
@@ -272,10 +273,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: C.textPrimary,
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -283,7 +284,7 @@ const styles = StyleSheet.create({
   },
   fabText: {
     fontSize: 28,
-    color: '#fff',
+    color: C.surface,
     fontWeight: '300',
   },
 });

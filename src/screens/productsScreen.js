@@ -11,6 +11,7 @@ import {
 import {productAPI} from '../api/apiClient';
 import ProductCard from '../components/ProductCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { C } from '../utils/theme';
 
 const ProductScreen = ({navigation}) => {
   const [products, setProducts] = useState([]);
@@ -99,7 +100,7 @@ const ProductScreen = ({navigation}) => {
         <TextInput
           style={styles.searchInput}
           placeholder="Search by name, code, tags..."
-          placeholderTextColor="#999"
+          placeholderTextColor={C.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -128,7 +129,7 @@ const ProductScreen = ({navigation}) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#007AFF']}
+            colors={[C.accent]}
           />
         }
         contentContainerStyle={styles.listContent}
@@ -158,18 +159,18 @@ const ProductScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 8,
     borderRadius: 10,
     paddingHorizontal: 12,
-    shadowColor: '#000',
+    shadowColor: C.textPrimary,
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -179,14 +180,14 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     fontSize: 16,
-    color: '#333',
+    color: C.textPrimary,
   },
   clearButton: {
     padding: 8,
   },
   clearButtonText: {
     fontSize: 16,
-    color: '#999',
+    color: C.textSecondary,
   },
   countContainer: {
     paddingHorizontal: 16,
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
   },
   countText: {
     fontSize: 13,
-    color: '#666',
+    color: C.textSecondary,
   },
   listContent: {
     paddingBottom: 80,
@@ -212,11 +213,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 32,
@@ -228,10 +229,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: C.textPrimary,
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
   },
   fabText: {
     fontSize: 28,
-    color: '#fff',
+    color: C.surface,
     fontWeight: '300',
   },
 });

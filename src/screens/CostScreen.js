@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { C } from '../utils/theme';
 
 const COST_PERMISSION = 'view_vendor';
 
@@ -18,7 +19,7 @@ const ACTION_CARDS = [
     icon: '🧾',
     title: 'Expenses',
     subtitle: 'View & add expenses',
-    color: '#27b02e',
+    color: C.success,
     screen: 'Expenses',
   },
   {
@@ -26,7 +27,7 @@ const ACTION_CARDS = [
     icon: '📅',
     title: 'Budgets',
     subtitle: 'View & set budgets',
-    color: '#9C27B0',
+    color: C.accent,
     screen: 'Budget',
   },
   {
@@ -34,7 +35,7 @@ const ACTION_CARDS = [
     icon: '🏷️',
     title: 'Cost Types',
     subtitle: 'Add & edit cost types',
-    color: '#007AFF',
+    color: C.accent,
     screen: 'CostTypes',
   },
   {
@@ -42,7 +43,7 @@ const ACTION_CARDS = [
     icon: '📂',
     title: 'Cost Groups',
     subtitle: 'Add & edit cost groups',
-    color: '#FF9800',
+    color: C.warning,
     screen: 'CostGroups',
   },
   {
@@ -50,7 +51,7 @@ const ACTION_CARDS = [
     icon: '📝',
     title: 'Descriptions',
     subtitle: 'Add & edit descriptions',
-    color: '#00BCD4',
+    color: C.accent,
     screen: 'CostDescriptions',
   },
 ];
@@ -110,11 +111,11 @@ const CostScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   intro: {
     fontSize: 13,
-    color: '#777',
+    color: C.textSecondary,
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 4,
@@ -122,7 +123,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
     marginBottom: 12,
   },
   statsContainer: {
@@ -135,7 +136,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   statCard: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 12,
     padding: 16,
     width: '48%',
@@ -150,11 +151,11 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
+    color: C.textPrimary,
   },
   statTitle: {
     fontSize: 13,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 4,
   },
   actionsContainer: {
@@ -166,7 +167,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   actionCard: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 12,
     padding: 16,
     width: '48%',
@@ -190,17 +191,17 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   actionSubtitle: {
     fontSize: 11,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 2,
   },
   noPermissionsContainer: {
     padding: 40,
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -214,7 +215,7 @@ const styles = StyleSheet.create({
   },
   noPermissionsText: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },

@@ -1,4 +1,4 @@
-package com.redchilli.invoiceapp
+package com.invoiceapp
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

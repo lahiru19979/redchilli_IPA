@@ -17,6 +17,7 @@ import { productAPI } from '../api/apiClient';
 import ImagePicker from 'react-native-image-crop-picker';
 import { Alert, Platform } from 'react-native';
 import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import { C } from '../utils/theme';
 
 const MOCK_ORIGINS = [
   { id: '1', origin_zone_name: 'Colombo' },
@@ -31,20 +32,7 @@ const GENDER_OPTIONS = [
   { id: 'Unisex', label: 'Unisex' },
 ];
 
-// ─── Theme ───────────────────────────────────────────────────────────────────
-const C = {
-  navy: '#1A237E',
-  accent: '#1565C0',
-  accentLight: '#E3F2FD',
-  green: '#2E7D32',
-  red: '#E53E3E',
-  surface: '#FFFFFF',
-  bg: '#F0F4F8',
-  border: '#E2E8F0',
-  textPrimary: '#1A202C',
-  textSecondary: '#718096',
-  textPlaceholder: '#A0AEC0',
-};
+// Palette (`C`) comes from the shared theme in ../utils/theme.
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 const SectionHeader = ({ number, icon, title }) => (
@@ -141,6 +129,10 @@ const CreateProductScreen = ({ navigation, route }) => {
   const [categories1, setCategories1] = useState([]);
   const [categories2, setCategories2] = useState([]);
   const [categories3, setCategories3] = useState([]);
+  // Level-3 id -> "Volumetric Required" (volume) flag, plus the derived toggle for
+  // the currently selected category chain. Volumetric fields show only when true.
+  const [l3VolumeMap, setL3VolumeMap] = useState({});
+  const [volumetricRequired, setVolumetricRequired] = useState(false);
   const [loadingCat1, setLoadingCat1] = useState(false);
   const [loadingCat2, setLoadingCat2] = useState(false);
   const [loadingCat3, setLoadingCat3] = useState(false);
@@ -149,6 +141,10 @@ const CreateProductScreen = ({ navigation, route }) => {
   const [selectedCat3, setSelectedCat3] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState({});
+  // Optional new filter values typed per label: { labelId: 'text' }
+  const [newFilters, setNewFilters] = useState({});
+  // The category (Level 3) the currently shown filters belong to.
+  const [filterCatId, setFilterCatId] = useState(null);
   const [selectedGender, setSelectedGender] = useState('');
   const [selectedSeasons, setSelectedSeasons] = useState([]);
   const [filters, setFilters] = useState({});
@@ -198,6 +194,13 @@ const CreateProductScreen = ({ navigation, route }) => {
     setVolumetric(v.toFixed(4));
   }, [dimW, dimH, dimL]);
 
+  // Show the volumetric fields only when the selected Level-4's parent (Level 3)
+  // has "Volumetric Required" enabled — mirrors the web product form.
+  useEffect(() => {
+    const l3Id = selectedCat3?.parent_id;
+    setVolumetricRequired(l3Id != null && Number(l3VolumeMap[l3Id]) === 1);
+  }, [selectedCat3, l3VolumeMap]);
+
   // ─── Helpers ─────────────────────────────────────────────────────────────
   const numOnly = t => t.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
 
@@ -217,6 +220,27 @@ const CreateProductScreen = ({ navigation, route }) => {
           ? cur.filter(id => id !== filterId)
           : [...cur, filterId],
       };
+    });
+
+  // ---- Optional new filter values: { labelId: [value, value, ...] } ----
+  // At least one input row is always shown per label.
+  const getNewFilterRows = labelId => newFilters[labelId] || [''];
+  const setNewFilterValue = (labelId, index, text) =>
+    setNewFilters(prev => {
+      const rows = [...(prev[labelId] || [''])];
+      rows[index] = text;
+      return { ...prev, [labelId]: rows };
+    });
+  const addNewFilterRow = labelId =>
+    setNewFilters(prev => ({
+      ...prev,
+      [labelId]: [...(prev[labelId] || ['']), ''],
+    }));
+  const removeNewFilterRow = (labelId, index) =>
+    setNewFilters(prev => {
+      const rows = [...(prev[labelId] || [''])];
+      rows.splice(index, 1);
+      return { ...prev, [labelId]: rows.length ? rows : [''] };
     });
 
   // const requestPermission = async type => {
@@ -590,6 +614,21 @@ const CreateProductScreen = ({ navigation, route }) => {
       if (response.data.status === 'success') {
         setCategories3(response.data.data);
       }
+
+      // Build a Level-3 id -> volume map so the volumetric fields can be shown
+      // only when the chosen Level-4's parent (Level 3) requires it.
+      try {
+        const l3 = await productAPI.getCategoriesByLevel3(level2Id);
+        if (l3.data.status === 'success') {
+          const map = {};
+          (l3.data.data || []).forEach(c => {
+            map[c.id] = Number(c.volume) || 0;
+          });
+          setL3VolumeMap(map);
+        }
+      } catch (e) {
+        console.log('L3 volume fetch error:', e.message);
+      }
     } catch (error) {
       console.log('Cat4 fetch error:', error.message);
     } finally {
@@ -601,6 +640,8 @@ const CreateProductScreen = ({ navigation, route }) => {
     try {
       setLoadingFilters(true);
       setFilters({}); // clear previous
+      setNewFilters({}); // clear any typed-in new filters
+      setFilterCatId(categoryId); // remember which category these filters belong to
       const response = await productAPI.getFilters(categoryId);
       console.log('Filters:', JSON.stringify(response.data, null, 2));
       if (response.data.status === 'success') {
@@ -685,11 +726,14 @@ const CreateProductScreen = ({ navigation, route }) => {
           }
           if (d.category_level4) setSelectedCat3(d.category_level4);
 
-          const deepest =
-            d.category_level4 || d.category_level2 || d.category_level1;
-          if (deepest) {
+          // Filters live on the Level 3 category. For a Level 4 selection, load its
+          // parent (Level 3) filters; otherwise fall back to the deepest selected level.
+          const filterCatId = d.category_level4
+            ? d.category_level4.parent_id
+            : (d.category_level2 || d.category_level1)?.id;
+          if (filterCatId) {
             setShowFilters(true);
-            fetchFilters(deepest.id);
+            fetchFilters(filterCatId);
           }
 
           setSelectedFilters(d.selected_filters || {});
@@ -773,7 +817,7 @@ const CreateProductScreen = ({ navigation, route }) => {
     short_description: shortDesc,
     weight,
     weight_unit: 'kg',
-    volmetric_weight: volumetric,
+    volmetric_weight: volumetricRequired ? volumetric : 0,
     width: dimW,
     height: dimH,
     length: dimL,
@@ -802,6 +846,18 @@ const CreateProductScreen = ({ navigation, route }) => {
     selected_categories4: selectedCat3?.id || null,
     variants: variants.map(v => ({ name: v.name, price: v.price || 0 })),
     filters: selectedFilters,
+    // Optional new filter values typed per label -> { labelId: [values] }
+    new_filter: Object.fromEntries(
+      Object.entries(newFilters)
+        .map(([k, rows]) => [
+          k,
+          (Array.isArray(rows) ? rows : [rows])
+            .map(v => (v || '').trim())
+            .filter(Boolean),
+        ])
+        .filter(([, vals]) => vals.length),
+    ),
+    filter_cat_id: filterCatId,
     seasons: selectedSeasons.map(s => s.id),
     product_images: productImages
       .filter(i => i.dataUri)
@@ -1099,33 +1155,39 @@ const CreateProductScreen = ({ navigation, route }) => {
             keyboardType="decimal-pad"
           />
 
-          <FieldLabel label="Dimensions W × H × L (cm)" required />
-          <View style={s.dimRow}>
-            {[
-              { v: dimW, s: setDimW, p: 'W' },
-              { v: dimH, s: setDimH, p: 'H' },
-              { v: dimL, s: setDimL, p: 'L' },
-            ].map(({ v, s: setter, p }, i) => (
-              <React.Fragment key={p}>
-                <TextInput
-                  style={[s.input, s.dimInput]}
-                  value={v}
-                  onChangeText={t => setter(numOnly(t))}
-                  placeholder={p}
-                  placeholderTextColor={C.textPlaceholder}
-                  keyboardType="decimal-pad"
-                  textAlign="center"
-                />
-                {i < 2 && <Text style={s.dimX}>×</Text>}
-              </React.Fragment>
-            ))}
-          </View>
+          {/* Dimensions + Volumetric Weight show only when the selected
+              category's Level-3 requires a volumetric weight. */}
+          {volumetricRequired && (
+            <>
+              <FieldLabel label="Dimensions W × H × L (cm)" required />
+              <View style={s.dimRow}>
+                {[
+                  { v: dimW, s: setDimW, p: 'W' },
+                  { v: dimH, s: setDimH, p: 'H' },
+                  { v: dimL, s: setDimL, p: 'L' },
+                ].map(({ v, s: setter, p }, i) => (
+                  <React.Fragment key={p}>
+                    <TextInput
+                      style={[s.input, s.dimInput]}
+                      value={v}
+                      onChangeText={t => setter(numOnly(t))}
+                      placeholder={p}
+                      placeholderTextColor={C.textPlaceholder}
+                      keyboardType="decimal-pad"
+                      textAlign="center"
+                    />
+                    {i < 2 && <Text style={s.dimX}>×</Text>}
+                  </React.Fragment>
+                ))}
+              </View>
 
-          <FieldLabel label="Volumetric Weight" required />
-          <View style={s.readonlyRow}>
-            <Text style={s.readonlyText}>{volumetric}</Text>
-            <Text style={s.unitLabel}>kg</Text>
-          </View>
+              <FieldLabel label="Volumetric Weight" required />
+              <View style={s.readonlyRow}>
+                <Text style={s.readonlyText}>{volumetric}</Text>
+                <Text style={s.unitLabel}>kg</Text>
+              </View>
+            </>
+          )}
         </View>
 
         {/* ══════════════════════════════════
@@ -1316,30 +1378,69 @@ const CreateProductScreen = ({ navigation, route }) => {
               </Text>
             ) : (
               // Filters List
-              Object.entries(filters).map(([groupName, items]) => (
-                <View key={groupName} style={s.filterGroup}>
-                  <Text style={s.filterGroupLabel}>{groupName}</Text>
-                  <View style={s.filterChips}>
-                    {items.map(f => {
-                      const on = (selectedFilters[f.label_id] || []).includes(
-                        f.id,
-                      );
-                      return (
+              Object.entries(filters).map(([groupName, items]) => {
+                const labelId = items[0]?.label_id;
+                return (
+                  <View key={groupName} style={s.filterGroup}>
+                    <Text style={s.filterGroupLabel}>{groupName}</Text>
+                    <View style={s.filterChips}>
+                      {items.map(f => {
+                        const on = (selectedFilters[f.label_id] || []).includes(
+                          f.id,
+                        );
+                        return (
+                          <TouchableOpacity
+                            key={f.id}
+                            style={[s.fChip, on && s.fChipOn]}
+                            onPress={() => toggleFilter(f.label_id, f.id)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[s.fChipText, on && s.fChipTextOn]}>
+                              {f.lable_data}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    {/* Optional: add one or more brand-new values under this label */}
+                    {getNewFilterRows(labelId).map((val, idx) => (
+                      <View
+                        key={idx}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          marginTop: 8,
+                        }}
+                      >
+                        <TextInput
+                          style={[s.input, { flex: 1, marginTop: 0 }]}
+                          value={val}
+                          onChangeText={t =>
+                            setNewFilterValue(labelId, idx, t)
+                          }
+                          placeholder={`Add new ${groupName} (optional)`}
+                          placeholderTextColor={C.textPlaceholder}
+                        />
                         <TouchableOpacity
-                          key={f.id}
-                          style={[s.fChip, on && s.fChipOn]}
-                          onPress={() => toggleFilter(f.label_id, f.id)}
+                          style={s.newFilterBtn}
+                          onPress={() =>
+                            idx === getNewFilterRows(labelId).length - 1
+                              ? addNewFilterRow(labelId)
+                              : removeNewFilterRow(labelId, idx)
+                          }
                           activeOpacity={0.7}
                         >
-                          <Text style={[s.fChipText, on && s.fChipTextOn]}>
-                            {f.lable_data}
+                          <Text style={s.newFilterBtnText}>
+                            {idx === getNewFilterRows(labelId).length - 1
+                              ? '+'
+                              : '−'}
                           </Text>
                         </TouchableOpacity>
-                      );
-                    })}
+                      </View>
+                    ))}
                   </View>
-                </View>
-              ))
+                );
+              })
             )}
           </View>
         )}
@@ -1762,7 +1863,9 @@ const CreateProductScreen = ({ navigation, route }) => {
           setSelectedCat3(item);
           setShowFilters(true);
           setSelectedFilters({}); // ← clear previous filters
-          fetchFilters(item.id);
+          // Filters are uploaded against the Level 3 category, so load the
+          // selected Level 4's parent (Level 3) filters — matches the web form.
+          fetchFilters(item.parent_id || item.id);
         }}
       />
     </View>
@@ -2007,6 +2110,18 @@ const s = StyleSheet.create({
   fChipOn: { borderColor: C.accent, backgroundColor: C.accentLight },
   fChipText: { fontSize: 13, color: C.textSecondary, fontWeight: '500' },
   fChipTextOn: { color: C.accent, fontWeight: '700' },
+  newFilterBtn: {
+    width: 40,
+    height: 40,
+    marginLeft: 8,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: C.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: C.accentLight,
+  },
+  newFilterBtnText: { fontSize: 20, color: C.accent, fontWeight: '700' },
 
   // Variants
   variantAddRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import {invoiceAPI} from '../api/apiClient';
 import {getStatusInfo, formatDate} from '../utils/helpers';
+import { C } from '../utils/theme';
 
 const InvoiceDetailScreen = ({route, navigation}) => {
   const {invoice} = route.params;
@@ -300,7 +301,7 @@ const InvoiceDetailScreen = ({route, navigation}) => {
 
       {loading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={C.accent} />
         </View>
       )}
     </ScrollView>
@@ -310,10 +311,10 @@ const InvoiceDetailScreen = ({route, navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     padding: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -322,11 +323,11 @@ const styles = StyleSheet.create({
   invoiceNumber: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: C.accent,
   },
   customerId: {
     fontSize: 13,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 4,
   },
   statusBadge: {
@@ -335,13 +336,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   statusText: {
-    color: '#fff',
+    color: C.surface,
     fontWeight: 'bold',
     fontSize: 12,
     textTransform: 'uppercase',
   },
   amountCard: {
-    backgroundColor: '#007AFF',
+    backgroundColor: C.accent,
     margin: 16,
     padding: 20,
     borderRadius: 12,
@@ -354,18 +355,18 @@ const styles = StyleSheet.create({
   amountValue: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#fff',
+    color: C.surface,
     marginTop: 4,
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: C.surface,
     padding: 16,
     marginTop: 12,
   },
   sectionTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#999',
+    color: C.textSecondary,
     marginBottom: 12,
     letterSpacing: 0.5,
   },
@@ -374,22 +375,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: C.divider,
   },
   infoLabel: {
     fontSize: 14,
-    color: '#666',
+    color: C.textSecondary,
   },
   infoValue: {
     fontSize: 14,
-    color: '#333',
+    color: C.textPrimary,
     fontWeight: '500',
     flex: 1,
     textAlign: 'right',
     marginLeft: 16,
   },
   link: {
-    color: '#007AFF',
+    color: C.accent,
   },
   quickActions: {
     flexDirection: 'row',
@@ -399,7 +400,7 @@ const styles = StyleSheet.create({
   },
   quickActionBtn: {
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: C.bg,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -410,7 +411,7 @@ const styles = StyleSheet.create({
   },
   quickActionText: {
     fontSize: 12,
-    color: '#666',
+    color: C.textSecondary,
   },
   itemRow: {
     flexDirection: 'row',
@@ -418,52 +419,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: C.divider,
   },
   itemInfo: {
     flex: 1,
   },
   itemName: {
     fontSize: 15,
-    color: '#333',
+    color: C.textPrimary,
     fontWeight: '500',
   },
   itemQty: {
     fontSize: 13,
-    color: '#666',
+    color: C.textSecondary,
     marginTop: 2,
   },
   itemPrice: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: C.textPrimary,
   },
   actions: {
     padding: 16,
     paddingBottom: 40,
   },
   paidButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: C.success,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 12,
   },
   editButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: C.accent,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 12,
   },
   deleteButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: C.danger,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
+    color: C.surface,
     fontSize: 16,
     fontWeight: '600',
   },
