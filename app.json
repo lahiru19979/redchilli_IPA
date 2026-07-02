@@ -1,20 +1,19 @@
 {
   "name": "InvoiceApp",
   "displayName": "InvoiceApp",
-  "extra": {
-    "eas": {
-      "projectId": "052157e5-b2d1-4500-8d9a-a8178e6336ae"
-    }
-  },
   "expo": {
+    "name": "InvoiceApp",
+    "slug": "InvoiceApp",
+    "owner": "lahiru_97",
     "android": {
       "package": "com.redchilli.invoiceapp",
-      "versionCode": 3
+      "versionCode": 5
     },
     "extra": {
       "eas": {
-        "projectId": "052157e5-b2d1-4500-8d9a-a8178e6336ae"
+        "projectId": "14401cfb-eb2e-4715-ac9c-05cd30883af2"
       }
     }
   }
 }
+
