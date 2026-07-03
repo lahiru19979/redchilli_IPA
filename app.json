@@ -6,8 +6,8 @@
     "slug": "InvoiceApp",
     "owner": "lahiru_97",
     "android": {
-      "package": "com.redchilli.invoiceapp",
-      "versionCode": 5
+      "package": "com.redchilli.invoiceapp2",
+      "versionCode": 6
     },
     "extra": {
       "eas": {
@@ -16,4 +16,3 @@
     }
   }
 }
-
