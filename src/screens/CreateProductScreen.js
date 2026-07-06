@@ -32,6 +32,18 @@ const GENDER_OPTIONS = [
   { id: 'Unisex', label: 'Unisex' },
 ];
 
+const MONTHS = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+
+// "Valentine | February" — season name plus its from-month, matching the web form.
+const seasonLabel = s => {
+  if (!s) return '';
+  const m = parseInt(s.season_from_month, 10);
+  return s.season_from_month && MONTHS[m]
+    ? `${s.season_name} | ${MONTHS[m]}`
+    : s.season_name;
+};
+
 // Palette (`C`) comes from the shared theme in ../utils/theme.
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -99,6 +111,7 @@ const CreateProductScreen = ({ navigation, route }) => {
   const [colors, setColors] = useState([]);
   const [loadingColors, setLoadingColors] = useState(false);
   const [selectedColor, setSelectedColor] = useState(null);
+  const [newColor, setNewColor] = useState(''); // optional new color name
   const [sizeCharts, setSizeCharts] = useState([]);
   const [loadingSizeCharts, setLoadingSizeCharts] = useState(false);
   const [selectedSizechart, setSelectedSizechart] = useState(null);
@@ -211,7 +224,14 @@ const CreateProductScreen = ({ navigation, route }) => {
         : [...prev, season],
     );
 
-  const toggleFilter = (labelId, filterId) =>
+  // Per label you use EITHER existing filter(s) OR a typed-in new value, not both
+  // (mirrors the web form's mutual-exclusion validation).
+  const labelHasNewValue = labelId =>
+    (newFilters[labelId] || []).some(v => (v || '').trim() !== '');
+  const labelHasSelection = labelId => (selectedFilters[labelId] || []).length > 0;
+
+  const toggleFilter = (labelId, filterId) => {
+    const isAdding = !(selectedFilters[labelId] || []).includes(filterId);
     setSelectedFilters(prev => {
       const cur = prev[labelId] || [];
       return {
@@ -221,27 +241,24 @@ const CreateProductScreen = ({ navigation, route }) => {
           : [...cur, filterId],
       };
     });
+    // Selecting an existing filter clears any typed-in new value for this label.
+    if (isAdding) {
+      setNewFilters(prev => (prev[labelId] ? { ...prev, [labelId]: [''] } : prev));
+    }
+  };
 
-  // ---- Optional new filter values: { labelId: [value, value, ...] } ----
-  // At least one input row is always shown per label.
-  const getNewFilterRows = labelId => newFilters[labelId] || [''];
-  const setNewFilterValue = (labelId, index, text) =>
-    setNewFilters(prev => {
-      const rows = [...(prev[labelId] || [''])];
-      rows[index] = text;
-      return { ...prev, [labelId]: rows };
-    });
-  const addNewFilterRow = labelId =>
-    setNewFilters(prev => ({
-      ...prev,
-      [labelId]: [...(prev[labelId] || ['']), ''],
-    }));
-  const removeNewFilterRow = (labelId, index) =>
-    setNewFilters(prev => {
-      const rows = [...(prev[labelId] || [''])];
-      rows.splice(index, 1);
-      return { ...prev, [labelId]: rows.length ? rows : [''] };
-    });
+  // ---- Optional new filter value: ONE per label -> { labelId: [value] } ----
+  const setNewFilterValue = (labelId, index, text) => {
+    setNewFilters(prev => ({ ...prev, [labelId]: [text] }));
+    // Typing a new value clears any selected existing filters for this label.
+    if (text.trim() !== '') {
+      setSelectedFilters(prev =>
+        prev[labelId] && prev[labelId].length
+          ? { ...prev, [labelId]: [] }
+          : prev,
+      );
+    }
+  };
 
   // const requestPermission = async type => {
   //   const permission =
@@ -737,6 +754,8 @@ const CreateProductScreen = ({ navigation, route }) => {
           }
 
           setSelectedFilters(d.selected_filters || {});
+          // Prefill custom (optionally-added) filter values back into the optional inputs.
+          setNewFilters(d.custom_filters || {});
 
           setVariants(
             (d.variants || []).map(v => ({
@@ -785,6 +804,21 @@ const CreateProductScreen = ({ navigation, route }) => {
       );
     }
   }, [editData, brands]);
+  // In CREATE mode, default the now-hidden required selectors to the first list
+  // item so the submit payload still carries valid values.
+  useEffect(() => {
+    if (!isEdit && !selectedType && types.length) setSelectedType(types[0]);
+  }, [isEdit, types]);
+  useEffect(() => {
+    if (!isEdit && !selectedVender && venders.length) setSelectedVender(venders[0]);
+  }, [isEdit, venders]);
+  useEffect(() => {
+    if (!isEdit && !selectedBrand && brands.length) setSelectedBrand(brands[0]);
+  }, [isEdit, brands]);
+  useEffect(() => {
+    if (!isEdit && !selectedOrigin && MOCK_ORIGINS.length)
+      setSelectedOrigin(MOCK_ORIGINS[0]);
+  }, [isEdit]);
   useEffect(() => {
     if (editData && colors.length) {
       setSelectedColor(
@@ -825,6 +859,7 @@ const CreateProductScreen = ({ navigation, route }) => {
     vender_id: selectedVender?.id,
     brand_id: selectedBrand?.id,
     color_id: selectedColor?.id,
+    new_color: newColor.trim() || null,
     size_chartup: selectedSizechart?.id,
     origin_zip_code: selectedOrigin?.id,
     gender: selectedGender,
@@ -1030,15 +1065,19 @@ const CreateProductScreen = ({ navigation, route }) => {
             placeholderTextColor={C.textPlaceholder}
           />
 
-          <FieldLabel label="Slug" required />
-          <TextInput
-            style={[s.input, s.mono]}
-            value={slug}
-            onChangeText={setSlug}
-            placeholder="premium-cotton-t-shirt"
-            placeholderTextColor={C.textPlaceholder}
-            autoCapitalize="none"
-          />
+          {false && (
+            <>
+              <FieldLabel label="Slug" required />
+              <TextInput
+                style={[s.input, s.mono]}
+                value={slug}
+                onChangeText={setSlug}
+                placeholder="premium-cotton-t-shirt"
+                placeholderTextColor={C.textPlaceholder}
+                autoCapitalize="none"
+              />
+            </>
+          )}
 
           <FieldLabel label="Product Code" required />
           <View style={s.readonlyRow}>
@@ -1063,46 +1102,50 @@ const CreateProductScreen = ({ navigation, route }) => {
             keyboardType="url"
           />
 
-          <View style={s.row2}>
-            <View style={s.col}>
-              <FieldLabel label="Type" required />
-              {loadingTypes ? (
-                <ActivityIndicator size="small" color={C.accent} />
-              ) : (
-                <Selector
-                  value={selectedType?.type_name}
-                  placeholder="Select type"
-                  onPress={() => setActiveModal('type')}
-                />
-              )}
+          {false && (
+            <View style={s.row2}>
+              <View style={s.col}>
+                <FieldLabel label="Type" required />
+                {loadingTypes ? (
+                  <ActivityIndicator size="small" color={C.accent} />
+                ) : (
+                  <Selector
+                    value={selectedType?.type_name}
+                    placeholder="Select type"
+                    onPress={() => setActiveModal('type')}
+                  />
+                )}
+              </View>
+              <View style={s.col}>
+                <FieldLabel label="Vendor" required />
+                {loadingVenders ? (
+                  <ActivityIndicator size="small" color={C.accent} />
+                ) : (
+                  <Selector
+                    value={selectedVender?.vender_name}
+                    placeholder="Select vendor"
+                    onPress={() => setActiveModal('vendor')}
+                  />
+                )}
+              </View>
             </View>
-            <View style={s.col}>
-              <FieldLabel label="Vendor" required />
-              {loadingVenders ? (
-                <ActivityIndicator size="small" color={C.accent} />
-              ) : (
-                <Selector
-                  value={selectedVender?.vender_name}
-                  placeholder="Select vendor"
-                  onPress={() => setActiveModal('vendor')}
-                />
-              )}
-            </View>
-          </View>
+          )}
 
           <View style={s.row2}>
-            <View style={s.col}>
-              <FieldLabel label="Brand" required />
-              {loadingBrands ? (
-                <ActivityIndicator size="small" color={C.accent} />
-              ) : (
-                <Selector
-                  value={selectedBrand?.brand_name}
-                  placeholder="Select brand"
-                  onPress={() => setActiveModal('brand')}
-                />
-              )}
-            </View>
+            {false && (
+              <View style={s.col}>
+                <FieldLabel label="Brand" required />
+                {loadingBrands ? (
+                  <ActivityIndicator size="small" color={C.accent} />
+                ) : (
+                  <Selector
+                    value={selectedBrand?.brand_name}
+                    placeholder="Select brand"
+                    onPress={() => setActiveModal('brand')}
+                  />
+                )}
+              </View>
+            )}
             <View style={s.col}>
               <FieldLabel label="Status" required />
               <View style={[s.readonlyRow, { marginTop: 0 }]}>
@@ -1126,6 +1169,13 @@ const CreateProductScreen = ({ navigation, route }) => {
               onPress={() => setActiveModal('color')}
             />
           )}
+          <TextInput
+            style={[s.input, { marginTop: 8 }]}
+            value={newColor}
+            onChangeText={setNewColor}
+            placeholder="Add a new color (optional)"
+            placeholderTextColor={C.textPlaceholder}
+          />
 
           <FieldLabel label="Search Tags" hint="comma separated" />
           <TextInput
@@ -1181,11 +1231,15 @@ const CreateProductScreen = ({ navigation, route }) => {
                 ))}
               </View>
 
-              <FieldLabel label="Volumetric Weight" required />
-              <View style={s.readonlyRow}>
-                <Text style={s.readonlyText}>{volumetric}</Text>
-                <Text style={s.unitLabel}>kg</Text>
-              </View>
+              {false && (
+                <>
+                  <FieldLabel label="Volumetric Weight" required />
+                  <View style={s.readonlyRow}>
+                    <Text style={s.readonlyText}>{volumetric}</Text>
+                    <Text style={s.unitLabel}>kg</Text>
+                  </View>
+                </>
+              )}
             </>
           )}
         </View>
@@ -1221,36 +1275,42 @@ const CreateProductScreen = ({ navigation, route }) => {
             </View>
           ))}
 
-          <View style={s.row2}>
-            <View style={s.col}>
-              <FieldLabel label="Expiry Date" />
-              <TextInput
-                style={s.input}
-                value={expiryDate}
-                onChangeText={setExpiryDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={C.textPlaceholder}
-              />
+          {false && (
+            <View style={s.row2}>
+              <View style={s.col}>
+                <FieldLabel label="Expiry Date" />
+                <TextInput
+                  style={s.input}
+                  value={expiryDate}
+                  onChangeText={setExpiryDate}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={C.textPlaceholder}
+                />
+              </View>
+              <View style={s.col}>
+                <FieldLabel label="Delivery Margin (Days)" />
+                <TextInput
+                  style={s.input}
+                  value={deliveryMargin}
+                  onChangeText={setDeliveryMargin}
+                  placeholder="e.g. 3"
+                  placeholderTextColor={C.textPlaceholder}
+                  keyboardType="number-pad"
+                />
+              </View>
             </View>
-            <View style={s.col}>
-              <FieldLabel label="Delivery Margin (Days)" />
-              <TextInput
-                style={s.input}
-                value={deliveryMargin}
-                onChangeText={setDeliveryMargin}
-                placeholder="e.g. 3"
-                placeholderTextColor={C.textPlaceholder}
-                keyboardType="number-pad"
-              />
-            </View>
-          </View>
+          )}
 
-          <FieldLabel label="Origin" required />
-          <Selector
-            value={selectedOrigin?.origin_zone_name}
-            placeholder="Select origin city"
-            onPress={() => setActiveModal('origin')}
-          />
+          {false && (
+            <>
+              <FieldLabel label="Origin" required />
+              <Selector
+                value={selectedOrigin?.origin_zone_name}
+                placeholder="Select origin city"
+                onPress={() => setActiveModal('origin')}
+              />
+            </>
+          )}
         </View>
 
         {/* ══════════════════════════════════
@@ -1289,7 +1349,12 @@ const CreateProductScreen = ({ navigation, route }) => {
             <ActivityIndicator size="small" color={C.accent} />
           ) : (
             <Selector
-              value={selectedCat3?.category_name}
+              value={
+                selectedCat3?.cat_label ||
+                (selectedCat3?.parent_category
+                  ? `${selectedCat3.parent_category.category_name} | ${selectedCat3.category_name}`
+                  : selectedCat3?.category_name)
+              }
               placeholder={
                 selectedCat2 ? 'Select sub-category' : 'Select Level 2 first'
               }
@@ -1299,14 +1364,16 @@ const CreateProductScreen = ({ navigation, route }) => {
           )}
 
           <View style={s.row2}>
-            <View style={s.col}>
-              <FieldLabel label="Gender" />
-              <Selector
-                value={selectedGender || undefined}
-                placeholder="Select gender"
-                onPress={() => setActiveModal('gender')}
-              />
-            </View>
+            {false && (
+              <View style={s.col}>
+                <FieldLabel label="Gender" />
+                <Selector
+                  value={selectedGender || undefined}
+                  placeholder="Select gender"
+                  onPress={() => setActiveModal('gender')}
+                />
+              </View>
+            )}
             <View style={s.col}>
               <FieldLabel label="Size Chart" />
               {loadingSizeCharts ? (
@@ -1380,6 +1447,10 @@ const CreateProductScreen = ({ navigation, route }) => {
               // Filters List
               Object.entries(filters).map(([groupName, items]) => {
                 const labelId = items[0]?.label_id;
+                // Mutual exclusion: if a new value is typed, existing chips are
+                // disabled; if a filter is selected, the new-value input is disabled.
+                const chipsDisabled = labelHasNewValue(labelId);
+                const newInputDisabled = labelHasSelection(labelId);
                 return (
                   <View key={groupName} style={s.filterGroup}>
                     <Text style={s.filterGroupLabel}>{groupName}</Text>
@@ -1391,8 +1462,13 @@ const CreateProductScreen = ({ navigation, route }) => {
                         return (
                           <TouchableOpacity
                             key={f.id}
-                            style={[s.fChip, on && s.fChipOn]}
+                            style={[
+                              s.fChip,
+                              on && s.fChipOn,
+                              chipsDisabled && { opacity: 0.4 },
+                            ]}
                             onPress={() => toggleFilter(f.label_id, f.id)}
+                            disabled={chipsDisabled}
                             activeOpacity={0.7}
                           >
                             <Text style={[s.fChipText, on && s.fChipTextOn]}>
@@ -1402,42 +1478,20 @@ const CreateProductScreen = ({ navigation, route }) => {
                         );
                       })}
                     </View>
-                    {/* Optional: add one or more brand-new values under this label */}
-                    {getNewFilterRows(labelId).map((val, idx) => (
-                      <View
-                        key={idx}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          marginTop: 8,
-                        }}
-                      >
-                        <TextInput
-                          style={[s.input, { flex: 1, marginTop: 0 }]}
-                          value={val}
-                          onChangeText={t =>
-                            setNewFilterValue(labelId, idx, t)
-                          }
-                          placeholder={`Add new ${groupName} (optional)`}
-                          placeholderTextColor={C.textPlaceholder}
-                        />
-                        <TouchableOpacity
-                          style={s.newFilterBtn}
-                          onPress={() =>
-                            idx === getNewFilterRows(labelId).length - 1
-                              ? addNewFilterRow(labelId)
-                              : removeNewFilterRow(labelId, idx)
-                          }
-                          activeOpacity={0.7}
-                        >
-                          <Text style={s.newFilterBtnText}>
-                            {idx === getNewFilterRows(labelId).length - 1
-                              ? '+'
-                              : '−'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    ))}
+                    {/* Optional: add ONE brand-new value under this label
+                        (only available when no existing filter is selected). */}
+                    <TextInput
+                      style={[
+                        s.input,
+                        { marginTop: 8 },
+                        newInputDisabled && { opacity: 0.4 },
+                      ]}
+                      value={(newFilters[labelId] || [''])[0] || ''}
+                      onChangeText={t => setNewFilterValue(labelId, 0, t)}
+                      editable={!newInputDisabled}
+                      placeholder={`Add new ${groupName} (optional)`}
+                      placeholderTextColor={C.textPlaceholder}
+                    />
                   </View>
                 );
               })
@@ -1527,16 +1581,20 @@ const CreateProductScreen = ({ navigation, route }) => {
             numberOfLines={3}
           />
 
-          <FieldLabel label="Product Details" />
-          <TextInput
-            style={[s.input, { minHeight: 130, textAlignVertical: 'top' }]}
-            value={productDesc}
-            onChangeText={setProductDesc}
-            placeholder="Full description, specs, materials, care instructions..."
-            placeholderTextColor={C.textPlaceholder}
-            multiline
-            numberOfLines={6}
-          />
+          {false && (
+            <>
+              <FieldLabel label="Product Details" />
+              <TextInput
+                style={[s.input, { minHeight: 130, textAlignVertical: 'top' }]}
+                value={productDesc}
+                onChangeText={setProductDesc}
+                placeholder="Full description, specs, materials, care instructions..."
+                placeholderTextColor={C.textPlaceholder}
+                multiline
+                numberOfLines={6}
+              />
+            </>
+          )}
         </View>
 
         {/* ══════════════════════════════════
@@ -1550,40 +1608,44 @@ const CreateProductScreen = ({ navigation, route }) => {
           />
 
           {/* Social Image */}
-          <FieldLabel label="Social Media Image" hint="1:1 ratio • max 3MB" />
-          <TouchableOpacity
-            style={[
-              s.imgPickArea,
-              socialImage && {
-                borderStyle: 'solid',
-                padding: 0,
-                overflow: 'hidden',
-              },
-            ]}
-            onPress={pickSocialImage}
-            activeOpacity={0.8}
-          >
-            {socialImage ? (
-              <View style={s.socialPreview}>
-                <Image
-                  source={{ uri: socialImage.uri }}
-                  style={s.socialPreviewImg}
-                  resizeMode="cover"
-                />
-                <View style={s.imgOverlay}>
-                  <Text style={s.imgOverlayText}>Tap to change</Text>
-                </View>
-              </View>
-            ) : (
-              <View style={s.imgPickInner}>
-                <Text style={s.imgPickIcon}>📷</Text>
-                <Text style={s.imgPickText}>Choose Social Image</Text>
-                <Text style={s.imgPickHint}>
-                  jpeg · png · jpg · webp • max 3MB
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          {false && (
+            <>
+              <FieldLabel label="Social Media Image" hint="1:1 ratio • max 3MB" />
+              <TouchableOpacity
+                style={[
+                  s.imgPickArea,
+                  socialImage && {
+                    borderStyle: 'solid',
+                    padding: 0,
+                    overflow: 'hidden',
+                  },
+                ]}
+                onPress={pickSocialImage}
+                activeOpacity={0.8}
+              >
+                {socialImage ? (
+                  <View style={s.socialPreview}>
+                    <Image
+                      source={{ uri: socialImage.uri }}
+                      style={s.socialPreviewImg}
+                      resizeMode="cover"
+                    />
+                    <View style={s.imgOverlay}>
+                      <Text style={s.imgOverlayText}>Tap to change</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={s.imgPickInner}>
+                    <Text style={s.imgPickIcon}>📷</Text>
+                    <Text style={s.imgPickText}>Choose Social Image</Text>
+                    <Text style={s.imgPickHint}>
+                      jpeg · png · jpg · webp • max 3MB
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
 
           {/* Product Images */}
           <FieldLabel
@@ -1816,8 +1878,8 @@ const CreateProductScreen = ({ navigation, route }) => {
       <DropModal
         mKey="season"
         title="Select Season(s)"
-        data={seasons} // ← real data
-        labelKey="season_name" // ← full name in dropdown
+        data={seasons.map(s => ({ ...s, season_label: seasonLabel(s) }))}
+        labelKey="season_label" // ← name | month, matching the web form
         onSelect={toggleSeason}
         multi
         selected={selectedSeasons}
@@ -1857,8 +1919,13 @@ const CreateProductScreen = ({ navigation, route }) => {
       <DropModal
         mKey="cat3"
         title="Category Level 4"
-        data={categories3} // ← real data (holds Level 4 options)
-        labelKey="category_name"
+        data={categories3.map(c => ({
+          ...c,
+          cat_label: c.parent_category
+            ? `${c.parent_category.category_name} | ${c.category_name}`
+            : c.category_name,
+        }))} // ← "cat3 | cat4", matching the web form
+        labelKey="cat_label"
         onSelect={item => {
           setSelectedCat3(item);
           setShowFilters(true);
