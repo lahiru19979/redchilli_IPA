@@ -64,6 +64,15 @@ const ACTION_CARDS = [
     screen: 'Cost',
     permission: 'view_finance_master',
   },
+  {
+    id: 'task_manager',
+    icon: '🗂️',
+    title: 'Task Manager',
+    subtitle: 'Job cards & my tasks',
+    color: C.warning,
+    screen: 'TaskManager',
+    permission: 'view_my_tasks',
+  },
 ];
 
 // Stat cards configuration

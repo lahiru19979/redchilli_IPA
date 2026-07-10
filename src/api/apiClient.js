@@ -155,6 +155,31 @@ export const costAPI = {
     apiClient.put(`/cost-descriptions/${id}`, data),
 };
 
+export const taskAPI = {
+  // Task Types
+  getTaskTypes: searchKey =>
+    apiClient.get('/task-types', { params: { searchKey } }),
+  createTaskType: data => apiClient.post('/task-types', data),
+  updateTaskType: (id, data) => apiClient.put(`/task-types/${id}`, data),
+  deleteTaskType: id => apiClient.delete(`/task-types/${id}`),
+
+  // Job Cards
+  getJobCards: (filter = 'ongoing', searchKey, deliveryDate) =>
+    apiClient.get('/job-cards', { params: { filter, searchKey, deliveryDate } }),
+  createJobCard: data => apiClient.post('/job-cards', data),
+  getJobCard: id => apiClient.get(`/job-cards/${id}`),
+  deleteJobCard: id => apiClient.delete(`/job-cards/${id}`),
+  reassignTask: data => apiClient.post('/job-cards/task/reassign', data),
+
+  // My Tasks
+  getMyTasks: (bucket = 'ongoing') =>
+    apiClient.get('/my-tasks', { params: { bucket } }),
+  updateMyTask: (id, data) => apiClient.put(`/my-tasks/${id}`, data),
+
+  // Shared lookups
+  getTaskUsers: () => apiClient.get('/task-users'),
+};
+
 export const customerAPI = {
   // Get all customers
   getAll: () => apiClient.get('/cusname'),

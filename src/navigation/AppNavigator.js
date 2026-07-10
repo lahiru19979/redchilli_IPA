@@ -29,6 +29,12 @@ import BudgetScreen from '../screens/BudgetScreen';
 import CostTypesScreen from '../screens/CostTypesScreen';
 import CostGroupsScreen from '../screens/CostGroupsScreen';
 import CostDescriptionsScreen from '../screens/CostDescriptionsScreen';
+import TaskManagerScreen from '../screens/TaskManagerScreen';
+import JobCardsScreen from '../screens/JobCardsScreen';
+import CreateJobCardScreen from '../screens/CreateJobCardScreen';
+import JobCardDetailScreen from '../screens/JobCardDetailScreen';
+import MyTasksScreen from '../screens/MyTasksScreen';
+import TaskTypesScreen from '../screens/TaskTypesScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -224,6 +230,37 @@ const AppNavigator = () => {
                 name="CostDescriptions"
                 component={CostDescriptionsScreen}
                 options={{ title: 'Cost Descriptions' }}
+              />
+
+              <Stack.Screen
+                name="TaskManager"
+                component={TaskManagerScreen}
+                options={{ title: 'Task Manager' }}
+              />
+              <Stack.Screen
+                name="JobCards"
+                component={JobCardsScreen}
+                options={{ title: 'Job Cards' }}
+              />
+              <Stack.Screen
+                name="CreateJobCard"
+                component={CreateJobCardScreen}
+                options={{ title: 'New Job Card' }}
+              />
+              <Stack.Screen
+                name="JobCardDetail"
+                component={JobCardDetailScreen}
+                options={{ title: 'Job Card Details' }}
+              />
+              <Stack.Screen
+                name="MyTasks"
+                component={MyTasksScreen}
+                options={{ title: 'My Tasks' }}
+              />
+              <Stack.Screen
+                name="TaskTypes"
+                component={TaskTypesScreen}
+                options={{ title: 'Task Types' }}
               />
             </>
           ) : (
