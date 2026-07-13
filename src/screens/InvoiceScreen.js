@@ -12,9 +12,15 @@ import {
 import {invoiceAPI} from '../api/apiClient';
 import InvoiceCard from '../components/InvoiceCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import {useAuth} from '../context/AuthContext';
 import { C } from '../utils/theme';
 
 const InvoiceScreen = ({navigation}) => {
+  const {hasPermission} = useAuth();
+  // Accept either the new granular permission or the older, broader one that
+  // already gated the whole Invoice module, so nothing breaks for existing
+  // users until create_joborder is explicitly granted to them.
+  const canCreate = hasPermission(['create_joborder', 'view_CRM_management']);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -180,11 +186,13 @@ const InvoiceScreen = ({navigation}) => {
       />
 
       {/* FAB - Create Invoice */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('CreateInvoice')}>
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
+      {canCreate && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => navigation.navigate('CreateInvoice')}>
+          <Text style={styles.fabText}>+</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };

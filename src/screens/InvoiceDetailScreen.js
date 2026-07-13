@@ -11,9 +11,17 @@ import {
 } from 'react-native';
 import {invoiceAPI} from '../api/apiClient';
 import {getStatusInfo, formatDate} from '../utils/helpers';
+import {useAuth} from '../context/AuthContext';
 import { C } from '../utils/theme';
 
 const InvoiceDetailScreen = ({route, navigation}) => {
+  const {hasPermission} = useAuth();
+  // Accept either the new granular permission or the older, broader one that
+  // already gated the whole Invoice module, so nothing breaks for existing
+  // users until these are explicitly granted to them.
+  const canEdit = hasPermission(['edit_joborder', 'view_CRM_management']);
+  const canDelete = hasPermission(['delete_joborder', 'view_CRM_management']);
+  const canUpdatePayment = hasPermission(['update_payment_joborder', 'view_CRM_management']);
   const {invoice} = route.params;
   const [invoiceDetails, setInvoiceDetails] = useState(invoice);
   const [loading, setLoading] = useState(false);
@@ -244,15 +252,19 @@ const InvoiceDetailScreen = ({route, navigation}) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>ITEMS</Text>
           {items.map((item, index) => (
-            <View key={index} style={styles.itemRow}>
+            <View key={item.id ?? index} style={styles.itemRow}>
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName}>
-                  {item.product_name || item.name || `Item ${index + 1}`}
+                  {item.desc_td || item.product_name || item.name || `Item ${index + 1}`}
                 </Text>
-                <Text style={styles.itemQty}>Qty: {item.quantity || 1}</Text>
+                <Text style={styles.itemQty}>
+                  Qty: {item.qty_txt ?? item.quantity ?? 1}
+                  {item.color_se ? ` • ${item.color_se}` : ''}
+                  {item.size_se ? ` • ${item.size_se}` : ''}
+                </Text>
               </View>
               <Text style={styles.itemPrice}>
-                Rs. {item.price || item.amount || '0.00'}
+                Rs. {item.amount_txt || item.price || item.amount || '0.00'}
               </Text>
             </View>
           ))}
@@ -280,7 +292,7 @@ const InvoiceDetailScreen = ({route, navigation}) => {
 
       {/* Action Buttons */}
       <View style={styles.actions}>
-        {invoiceDetails.status !== '11' && invoiceDetails.status !== '9' && (
+        {canUpdatePayment && invoiceDetails.status !== '11' && invoiceDetails.status !== '9' && (
           <TouchableOpacity
             style={styles.paidButton}
             onPress={handleMarkAsPaid}>
@@ -288,15 +300,19 @@ const InvoiceDetailScreen = ({route, navigation}) => {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity 
-          style={styles.editButton}
-          onPress={() => navigation.navigate('EditInvoice', {invoice: invoiceDetails})}>
-          <Text style={styles.buttonText}>✏️ Edit Invoice</Text>
-        </TouchableOpacity>
+        {canEdit && (
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => navigation.navigate('EditInvoice', {invoice: invoiceDetails, items})}>
+            <Text style={styles.buttonText}>✏️ Edit Invoice</Text>
+          </TouchableOpacity>
+        )}
 
-        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <Text style={styles.buttonText}>🗑️ Delete Invoice</Text>
-        </TouchableOpacity>
+        {canDelete && (
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+            <Text style={styles.buttonText}>🗑️ Delete Invoice</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {loading && (

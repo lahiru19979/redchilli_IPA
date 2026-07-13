@@ -148,6 +148,11 @@ const AppNavigator = () => {
                 options={{ title: 'Create Invoice' }}
               />
               <Stack.Screen
+                name="EditInvoice"
+                component={CreateInvoiceScreen}
+                options={{ title: 'Edit Invoice' }}
+              />
+              <Stack.Screen
                 name="Invoice"
                 component={InvoiceScreen}
                 options={{ title: 'Invoices' }}

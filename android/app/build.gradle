@@ -79,10 +79,10 @@ android {
 
     namespace "com.invoiceapp"
     defaultConfig {
-       applicationId "com.redchilli.invoiceapp2"
+       applicationId "com.redchilli.rcmerchant"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-       versionCode 6
+       versionCode 9
         versionName "0.0.1"
     }
     signingConfigs {

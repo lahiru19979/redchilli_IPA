@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useCallback, useRef} from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,8 @@ import {
 import {useFocusEffect} from '@react-navigation/native';
 import {invoiceAPI, productAPI, customerAPI} from '../api/apiClient';
 import ProductItem from '../components/ProductItem';
-import {getColorName, getColorByID} from '../utils/colors';
-import {getSizeByID} from '../utils/sizes'; // 1. Import getSizeByID
+import {getColorName, getColorByID, PRODUCT_COLORS} from '../utils/colors';
+import {getSizeByID, SIZES, NUMERIC_SIZES} from '../utils/sizes'; // 1. Import getSizeByID
 import invoiceStore from '../store/invoiceStore';
 import { C } from '../utils/theme';
 
@@ -26,10 +26,50 @@ const CUSTOMER_TYPES = [
   {id: '3', label: 'Redex', color: '#FF5722'},
 ];
 
-const CreateInvoiceScreen = ({navigation}) => {
+// Reconstructs invoiceStore-shaped items from an existing invoice's saved
+// line items (Invoice3 rows). Those rows never stored a product_id, only
+// itemCode_se/color_se/size_se as strings, so each row is matched back to
+// its live product by item_code — rows whose code no longer resolves are
+// reported back as skipped so the user can re-add them manually.
+const reconstructEditItems = (rawItems, productList) => {
+  const built = [];
+  const skippedCodes = [];
+
+  rawItems.forEach((row, index) => {
+    const product = productList.find(p => p.item_code === row.itemCode_se);
+    if (!product) {
+      skippedCodes.push(row.itemCode_se || `#${index + 1}`);
+      return;
+    }
+
+    const colorMatch = PRODUCT_COLORS.find(
+      c => c.name.toLowerCase() === String(row.color_se || '').toLowerCase(),
+    );
+    const sizeMatch = [...SIZES, ...NUMERIC_SIZES].find(
+      s => s.name.toLowerCase() === String(row.size_se || '').toLowerCase(),
+    );
+
+    built.push({
+      id: Date.now() + index,
+      product,
+      quantity: Number(row.qty_txt) || 1,
+      priceType: `sell_price${row.slab_se || '1'}`,
+      color: colorMatch ? colorMatch.id : 'white',
+      size: sizeMatch ? sizeMatch.id : 'm',
+    });
+  });
+
+  return {built, skippedCodes};
+};
+
+const CreateInvoiceScreen = ({navigation, route}) => {
+  const editingInvoice = route?.params?.invoice;
+  const editingRawItems = route?.params?.items || [];
+  const isEditMode = !!editingInvoice;
+
   // ... (Existing state variables remain the same)
-  const [invoiceNo, setInvoiceNo] = useState('');
-  const [loadingInvoiceNo, setLoadingInvoiceNo] = useState(true);
+  const [invoiceNo, setInvoiceNo] = useState(isEditMode ? editingInvoice.inv_no : '');
+  const [loadingInvoiceNo, setLoadingInvoiceNo] = useState(!isEditMode);
   const [items, setItems] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerType, setCustomerType] = useState('');
@@ -84,10 +124,51 @@ const CreateInvoiceScreen = ({navigation}) => {
     }
   };
 
+  const reconstructedItemsRef = useRef(false);
+
   useEffect(() => {
-    fetchMaxInvoiceNo();
+    if (isEditMode) {
+      // Seed the store directly (rather than local state) so the
+      // useFocusEffect below - which is the single source of truth for
+      // customer/items on this screen - picks it up the same way it does
+      // for a normal in-progress invoice.
+      invoiceStore.setCustomerInfo({
+        id: null,
+        cus_id: editingInvoice.cus_id || '',
+        name: editingInvoice.cus_name || '',
+        phone: editingInvoice.phone || '',
+        address: editingInvoice.address || '',
+        customerType: editingInvoice.invoice_type || '',
+      });
+      fetchProducts();
+    } else {
+      fetchMaxInvoiceNo();
+    }
     fetchCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Once the product catalog loads, match the existing invoice's saved line
+  // items back to live products and load them into the store. Runs once.
+  useEffect(() => {
+    if (!isEditMode || reconstructedItemsRef.current || products.length === 0) {
+      return;
+    }
+    reconstructedItemsRef.current = true;
+
+    const {built, skippedCodes} = reconstructEditItems(editingRawItems, products);
+    invoiceStore.clearItems();
+    invoiceStore.loadItems(built);
+    setItems(invoiceStore.getItems());
+
+    if (skippedCodes.length > 0) {
+      Alert.alert(
+        'Some items could not be reloaded',
+        `These product codes no longer match a current product, so they were skipped: ${skippedCodes.join(', ')}. Please re-add them manually if still needed.`,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products]);
 
   useFocusEffect(
     useCallback(() => {
@@ -95,7 +176,7 @@ const CreateInvoiceScreen = ({navigation}) => {
       setItems(storeItems);
 
       const info = invoiceStore.getCustomerInfo();
-      if (info.id) {
+      if (info.id || info.cus_id) {
         setSelectedCustomer({
           id: info.id,
           cus_id: info.cus_id,
@@ -298,27 +379,42 @@ const CreateInvoiceScreen = ({navigation}) => {
         grand_total: calculateTotal(),
       };
 
-      console.log('📤 Creating invoice:', JSON.stringify(invoiceData, null, 2));
+      console.log(
+        isEditMode ? '📤 Updating invoice:' : '📤 Creating invoice:',
+        JSON.stringify(invoiceData, null, 2),
+      );
 
-      const response = await invoiceAPI.create(invoiceData);
-      console.log('✅ Invoice created:', response.data);
+      const response = isEditMode
+        ? await invoiceAPI.updateFull(editingInvoice.id, invoiceData)
+        : await invoiceAPI.create(invoiceData);
+      console.log(isEditMode ? '✅ Invoice updated:' : '✅ Invoice created:', response.data);
 
       invoiceStore.clearAll();
       setItems([]);
-      clearCustomer();
-      setCustomerType('working');
-      fetchMaxInvoiceNo();
 
-      Alert.alert(
-        'Success ✅',
-        `Invoice ${invoiceNo} created successfully!`,
-        [{text: 'OK', onPress: () => navigation.goBack()}],
-      );
+      if (isEditMode) {
+        Alert.alert(
+          'Success ✅',
+          `Invoice ${invoiceNo} updated successfully!`,
+          [{text: 'OK', onPress: () => navigation.goBack()}],
+        );
+      } else {
+        clearCustomer();
+        setCustomerType('working');
+        fetchMaxInvoiceNo();
+
+        Alert.alert(
+          'Success ✅',
+          `Invoice ${invoiceNo} created successfully!`,
+          [{text: 'OK', onPress: () => navigation.goBack()}],
+        );
+      }
     } catch (error) {
-      console.error('Create invoice error:', error);
+      console.error(isEditMode ? 'Update invoice error:' : 'Create invoice error:', error);
       Alert.alert(
         'Error',
-        error.response?.data?.message || 'Failed to create invoice',
+        error.response?.data?.message ||
+          (isEditMode ? 'Failed to update invoice' : 'Failed to create invoice'),
       );
     } finally {
       setLoading(false);
@@ -555,7 +651,9 @@ const CreateInvoiceScreen = ({navigation}) => {
           onPress={showInvoicePreview}
           disabled={loading}>
           <Text style={styles.createButtonText}>
-            {loading ? 'Creating...' : 'Preview & Create Invoice'}
+            {loading
+              ? (isEditMode ? 'Updating...' : 'Creating...')
+              : (isEditMode ? 'Preview & Update Invoice' : 'Preview & Create Invoice')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -748,7 +846,9 @@ const CreateInvoiceScreen = ({navigation}) => {
                 <Text style={styles.previewCancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.previewConfirmButton} onPress={handleCreateInvoice}>
-                <Text style={styles.previewConfirmButtonText}>✓ Confirm & Create</Text>
+                <Text style={styles.previewConfirmButtonText}>
+                  {isEditMode ? '✓ Confirm & Update' : '✓ Confirm & Create'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -802,7 +902,9 @@ const CreateInvoiceScreen = ({navigation}) => {
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={C.accent} />
-            <Text style={styles.loadingBoxText}>Creating Invoice...</Text>
+            <Text style={styles.loadingBoxText}>
+              {isEditMode ? 'Updating Invoice...' : 'Creating Invoice...'}
+            </Text>
           </View>
         </View>
       )}

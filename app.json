@@ -6,12 +6,12 @@
     "slug": "InvoiceApp",
     "owner": "lahiru_97",
     "android": {
-      "package": "com.redchilli.invoiceapp2",
-      "versionCode": 6
+      "package": "com.redchilli.rcmerchant",
+      "versionCode": 9
     },
     "extra": {
       "eas": {
-        "projectId": "14401cfb-eb2e-4715-ac9c-05cd30883af2"
+        "projectId": "9e837770-b65e-4928-b6af-350dc22557f9"
       }
     }
   }

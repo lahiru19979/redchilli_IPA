@@ -58,13 +58,25 @@ export const authAPI = {
 export const invoiceAPI = {
   getAll: (page = 1) => apiClient.get(`/invoices?page=${page}`),
 
-  getById: id => apiClient.get(`/invoices/${id}`),
+  // Was pointed at a route that doesn't exist (/invoices/{id}); the real
+  // header+items detail endpoint is /get_invoice_data/{id}.
+  getById: id => apiClient.get(`/get_invoice_data/${id}`),
 
   create: data => apiClient.post('/save_inv', data),
 
+  // Full update used by the edit-invoice form: replaces header, financials,
+  // and the entire item list. Backend requires cus_id/cus_name/inv_date/items.
+  updateFull: (id, data) => apiClient.put(`/invoices_update/${id}`, data),
+
+  // NOTE: still points at a route that doesn't exist (/invoices/{id}); kept
+  // as-is since fixing it also requires sending a full item list (see
+  // updateFull) and this is only used today by the (already broken)
+  // "Mark as Paid" action, which is out of scope for this fix.
   update: (id, data) => apiClient.put(`/invoices/${id}`, data),
 
-  delete: id => apiClient.delete(`/invoices/${id}`),
+  // Was pointed at a route that doesn't exist (/invoices/{id}); the real
+  // delete endpoint is /invoice_delete/{id}.
+  delete: id => apiClient.delete(`/invoice_delete/${id}`),
 
   getDashboard: () => apiClient.get('/dashboard'),
 

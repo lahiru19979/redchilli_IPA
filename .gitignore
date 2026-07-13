@@ -34,6 +34,10 @@ local.properties
 *.keystore
 !debug.keystore
 .kotlin/
+*.jks
+
+# Contains keystore passwords in plaintext - never commit
+credentials.json
 
 # node.js
 #

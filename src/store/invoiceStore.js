@@ -99,6 +99,14 @@ const invoiceStore = {
     return [...invoiceItems];
   },
 
+  // Bulk-replace all items at once (used when reloading an existing
+  // invoice's items for editing) - bypasses addItem's dedupe/increment
+  // logic since each row already carries its own exact quantity.
+  loadItems: (items) => {
+    invoiceItems = items;
+    return [...invoiceItems];
+  },
+
   // Remove item
   removeItem: (itemId) => {
     invoiceItems = invoiceItems.filter(item => item.id !== itemId);
