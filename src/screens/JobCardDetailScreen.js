@@ -24,10 +24,11 @@ const StatusBadge = ({ badge }) => (
   </View>
 );
 
-const JobCardDetailScreen = ({ route }) => {
+const JobCardDetailScreen = ({ route, navigation }) => {
   const { id } = route.params;
   const { hasPermission } = useAuth();
   const canReassign = hasPermission('edit_job_cards');
+  const canDelete = hasPermission('delete_job_cards');
 
   const [loading, setLoading] = useState(true);
   const [jobCard, setJobCard] = useState(null);
@@ -36,6 +37,7 @@ const JobCardDetailScreen = ({ route }) => {
   const [transferTaskId, setTransferTaskId] = useState(null);
   const [transferReason, setTransferReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -82,6 +84,60 @@ const JobCardDetailScreen = ({ route }) => {
     }
   };
 
+  const resetSchedule = task => {
+    Alert.alert(
+      'Reset Schedule',
+      'Clear the expected start/end time for this task? The assigned member will need to enter it again.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await taskAPI.resetTaskSchedule(task.id);
+              Alert.alert('Success', 'Schedule reset.');
+              await loadData();
+            } catch (error) {
+              console.error('Reset schedule error:', error?.response?.data || error);
+              Alert.alert(
+                'Error',
+                error?.response?.data?.message || 'Could not reset this schedule.',
+              );
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const confirmDeleteJobCard = () => {
+    Alert.alert('Delete Job Card', `Delete job ${jobCard.job_number}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setDeleting(true);
+            await taskAPI.deleteJobCard(jobCard.id);
+            Alert.alert('Success', 'Job card deleted successfully.', [
+              { text: 'OK', onPress: () => navigation.goBack() },
+            ]);
+          } catch (error) {
+            console.error('Delete job card error:', error?.response?.data || error);
+            Alert.alert(
+              'Error',
+              error?.response?.data?.message || 'Could not delete this job card.',
+            );
+          } finally {
+            setDeleting(false);
+          }
+        },
+      },
+    ]);
+  };
+
   if (loading) {
     return <LoadingSpinner message="Loading job card..." />;
   }
@@ -105,6 +161,20 @@ const JobCardDetailScreen = ({ route }) => {
         <Text style={styles.headerSub}>
           Created by: {jobCard.creator ? `${jobCard.creator.first_name} ${jobCard.creator.last_name}` : '-'}
         </Text>
+
+        {canDelete && (
+          <TouchableOpacity
+            style={[styles.deleteJobBtn, deleting && styles.submitBtnDisabled]}
+            onPress={confirmDeleteJobCard}
+            disabled={deleting}
+          >
+            {deleting ? (
+              <ActivityIndicator color={C.danger} size="small" />
+            ) : (
+              <Text style={styles.deleteJobBtnText}>🗑 Delete Job Card</Text>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
       <Text style={styles.sectionTitle}>Tasks</Text>
@@ -126,6 +196,25 @@ const JobCardDetailScreen = ({ route }) => {
             {' → '}
             {task.expected_end_at ? String(task.expected_end_at).replace('T', ' ').substring(0, 16) : '-'}
           </Text>
+          <Text style={styles.taskDetail}>
+            Actual: {task.actual_start_at ? String(task.actual_start_at).replace('T', ' ').substring(0, 16) : '-'}
+            {' → '}
+            {task.actual_end_at ? String(task.actual_end_at).replace('T', ' ').substring(0, 16) : '-'}
+          </Text>
+          {task.status === 'hold' && !!task.hold_reason && (
+            <Text style={styles.holdReasonText}>Hold reason: {task.hold_reason}</Text>
+          )}
+          {!!task.schedule_change_requested_at && (
+            <Text style={styles.changeRequestedText}>
+              ⚠ Schedule change requested{task.schedule_change_reason ? `: ${task.schedule_change_reason}` : ''}
+            </Text>
+          )}
+
+          {canReassign && (task.expected_start_at || task.expected_end_at) && (
+            <TouchableOpacity style={styles.resetBtn} onPress={() => resetSchedule(task)}>
+              <Text style={styles.resetBtnText}>Reset Schedule</Text>
+            </TouchableOpacity>
+          )}
 
           <View style={styles.historyBox}>
             <Text style={styles.historyTitle}>Transfer history</Text>
@@ -212,6 +301,17 @@ const styles = StyleSheet.create({
   },
   jobNumber: { fontSize: 20, fontWeight: '700', color: C.textPrimary, marginBottom: 6 },
   headerSub: { fontSize: 13, color: C.textSecondary, marginTop: 2 },
+  deleteJobBtn: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: C.danger,
+  },
+  deleteJobBtnText: { color: C.danger, fontWeight: '600', fontSize: 13 },
+  submitBtnDisabled: { opacity: 0.6 },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -231,6 +331,18 @@ const styles = StyleSheet.create({
   taskHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   taskName: { fontSize: 15, fontWeight: '600', color: C.textPrimary },
   taskDetail: { fontSize: 12, color: C.textSecondary, marginTop: 4 },
+  holdReasonText: { fontSize: 12, color: C.warning, marginTop: 4 },
+  changeRequestedText: { fontSize: 12, color: C.danger, marginTop: 6, fontWeight: '600' },
+  resetBtn: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: C.warning,
+  },
+  resetBtnText: { color: C.warning, fontWeight: '600', fontSize: 12 },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   badgeText: { fontSize: 11, fontWeight: '700' },
   historyBox: {

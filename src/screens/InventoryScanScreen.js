@@ -1,5 +1,5 @@
 // screens/InventoryScanScreen.js
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Linking,
   ActivityIndicator,
   Vibration,
+  TextInput,
+  Modal,
 } from 'react-native';
 import {
   Camera,
@@ -22,6 +24,9 @@ const InventoryScanScreen = ({navigation}) => {
   const [isScanning, setIsScanning] = useState(true);
   const [lastScannedCode, setLastScannedCode] = useState('');
   const [scannedCount, setScannedCount] = useState(0);
+  const [deviceScannerMode, setDeviceScannerMode] = useState(false);
+  const [manualCode, setManualCode] = useState('');
+  const deviceScannerInputRef = useRef(null);
 
   const device = useCameraDevice('back');
 
@@ -56,6 +61,17 @@ const InventoryScanScreen = ({navigation}) => {
     }
   };
 
+  // Shared by both entry methods (camera scan + hardware scanner device),
+  // so dedupe/vibrate/store behavior stays identical either way.
+  const recordScan = code => {
+    if (!code) return;
+
+    console.log('📷 Scanned:', code);
+    Vibration.vibrate(100);
+    scannedItemsStore.addItem(code);
+    setLastScannedCode(code);
+  };
+
   const codeScanner = useCodeScanner({
     codeTypes: [
       'qr',
@@ -71,20 +87,12 @@ const InventoryScanScreen = ({navigation}) => {
       if (!isScanning || codes.length === 0) return;
 
       const scannedCode = codes[0].value;
-      
+
       // Prevent duplicate rapid scans
       if (scannedCode === lastScannedCode) return;
 
-      console.log('📷 Scanned:', scannedCode);
-      
-      // Vibrate on successful scan
-      Vibration.vibrate(100);
-      
-      // Add to store
-      scannedItemsStore.addItem(scannedCode);
-      
-      setLastScannedCode(scannedCode);
-      
+      recordScan(scannedCode);
+
       // Brief pause before allowing next scan
       setIsScanning(false);
       setTimeout(() => {
@@ -92,6 +100,29 @@ const InventoryScanScreen = ({navigation}) => {
       }, 1000);
     },
   });
+
+  // Hardware barcode scanner devices act as a keyboard: they "type" the
+  // barcode digits into whatever input is focused, then send Enter/Return.
+  // This TextInput stays focused with the on-screen keyboard suppressed so
+  // a physical scanner gun can feed codes in without the camera at all.
+  const openDeviceScannerMode = () => {
+    setManualCode('');
+    setDeviceScannerMode(true);
+  };
+
+  const closeDeviceScannerMode = () => {
+    setDeviceScannerMode(false);
+    setManualCode('');
+  };
+
+  const handleDeviceScannerSubmit = () => {
+    const code = manualCode.trim();
+    setManualCode('');
+    if (!code) return;
+
+    recordScan(code);
+    deviceScannerInputRef.current?.focus();
+  };
 
   const goToScannedList = () => {
     navigation.navigate('ScannedItems');
@@ -188,6 +219,15 @@ const InventoryScanScreen = ({navigation}) => {
             Supports: EAN-13, EAN-8, QR, Code-128, UPC
           </Text>
 
+          {/* Hardware Scanner Device Button */}
+          <TouchableOpacity
+            style={styles.deviceScannerButton}
+            onPress={openDeviceScannerMode}>
+            <Text style={styles.deviceScannerButtonText}>
+              🔌 Use Scanner Device
+            </Text>
+          </TouchableOpacity>
+
           {/* View Scanned Items Button */}
           <TouchableOpacity
             style={styles.viewListButton}
@@ -198,6 +238,47 @@ const InventoryScanScreen = ({navigation}) => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Hardware barcode scanner input mode: the scanner device "types" the
+          code into this focused, keyboard-suppressed field, then sends Enter. */}
+      <Modal
+        visible={deviceScannerMode}
+        transparent
+        animationType="fade"
+        onRequestClose={closeDeviceScannerMode}>
+        <View style={styles.deviceScannerOverlay}>
+          <View style={styles.deviceScannerCard}>
+            <Text style={styles.deviceScannerTitle}>Scanner Device Mode</Text>
+            <Text style={styles.deviceScannerHint}>
+              Scan a barcode with your handheld scanner. It will be added
+              automatically — the on-screen keyboard is disabled.
+            </Text>
+
+            <TextInput
+              ref={deviceScannerInputRef}
+              style={styles.deviceScannerInput}
+              value={manualCode}
+              onChangeText={setManualCode}
+              onSubmitEditing={handleDeviceScannerSubmit}
+              blurOnSubmit={false}
+              autoFocus
+              showSoftInputOnFocus={false}
+              placeholder="Waiting for scan..."
+              placeholderTextColor={C.textPlaceholder}
+            />
+
+            <Text style={styles.deviceScannerCount}>
+              Scanned so far: {scannedCount}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.deviceScannerCloseButton}
+              onPress={closeDeviceScannerMode}>
+              <Text style={styles.deviceScannerCloseButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -383,6 +464,76 @@ const styles = StyleSheet.create({
     color: C.surface,
     fontSize: 18,
     fontWeight: '600',
+  },
+  deviceScannerButton: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: C.surface,
+    paddingHorizontal: 30,
+    paddingVertical: 14,
+    borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  deviceScannerButtonText: {
+    color: C.surface,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  deviceScannerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  deviceScannerCard: {
+    backgroundColor: C.surface,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+  },
+  deviceScannerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: C.textPrimary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  deviceScannerHint: {
+    fontSize: 13,
+    color: C.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  deviceScannerInput: {
+    backgroundColor: C.bg,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: C.border,
+    padding: 14,
+    fontSize: 16,
+    color: C.textPrimary,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  deviceScannerCount: {
+    fontSize: 13,
+    color: C.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  deviceScannerCloseButton: {
+    backgroundColor: C.accent,
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  deviceScannerCloseButtonText: {
+    color: C.surface,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 

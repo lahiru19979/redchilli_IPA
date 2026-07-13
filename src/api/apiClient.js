@@ -170,11 +170,17 @@ export const taskAPI = {
   getJobCard: id => apiClient.get(`/job-cards/${id}`),
   deleteJobCard: id => apiClient.delete(`/job-cards/${id}`),
   reassignTask: data => apiClient.post('/job-cards/task/reassign', data),
+  resetTaskSchedule: taskId =>
+    apiClient.post('/job-cards/task/reset-schedule', { task_id: taskId }),
 
   // My Tasks
   getMyTasks: (bucket = 'ongoing') =>
     apiClient.get('/my-tasks', { params: { bucket } }),
   updateMyTask: (id, data) => apiClient.put(`/my-tasks/${id}`, data),
+  requestScheduleChange: (id, reason) =>
+    apiClient.post(`/my-tasks/${id}/request-schedule-change`, {
+      schedule_change_reason: reason,
+    }),
 
   // Shared lookups
   getTaskUsers: () => apiClient.get('/task-users'),

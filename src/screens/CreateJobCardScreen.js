@@ -27,8 +27,6 @@ const CreateJobCardScreen = ({ navigation }) => {
   const [selectedTypes, setSelectedTypes] = useState({}); // { [taskTypeId]: true }
   const [assignedUser, setAssignedUser] = useState({}); // { [taskTypeId]: userId }
   const [qty, setQty] = useState({}); // { [taskTypeId]: string }
-  const [expectedStart, setExpectedStart] = useState({}); // { [taskTypeId]: string }
-  const [expectedEnd, setExpectedEnd] = useState({}); // { [taskTypeId]: string }
 
   const loadData = useCallback(async () => {
     try {
@@ -79,14 +77,10 @@ const CreateJobCardScreen = ({ navigation }) => {
       tasks: chosenIds,
       assigned_user: {},
       qty: {},
-      expected_start: {},
-      expected_end: {},
     };
     chosenIds.forEach(id => {
       if (assignedUser[id]) payload.assigned_user[id] = assignedUser[id];
       if (qty[id]) payload.qty[id] = qty[id];
-      if (expectedStart[id]) payload.expected_start[id] = expectedStart[id];
-      if (expectedEnd[id]) payload.expected_end[id] = expectedEnd[id];
     });
 
     try {
@@ -188,21 +182,9 @@ const CreateJobCardScreen = ({ navigation }) => {
                       onChangeText={v => setQty(prev => ({ ...prev, [t.id]: v }))}
                     />
 
-                    <DateTimeField
-                      label="Expected Start"
-                      compact
-                      value={expectedStart[t.id] || ''}
-                      onChange={v => setExpectedStart(prev => ({ ...prev, [t.id]: v }))}
-                      placeholder="Select start"
-                    />
-
-                    <DateTimeField
-                      label="Expected End"
-                      compact
-                      value={expectedEnd[t.id] || ''}
-                      onChange={v => setExpectedEnd(prev => ({ ...prev, [t.id]: v }))}
-                      placeholder="Select end"
-                    />
+                    <Text style={styles.scheduleNote}>
+                      The assigned member will set their own expected start/end time from My Tasks.
+                    </Text>
                   </View>
                 )}
               </View>
@@ -282,6 +264,12 @@ const styles = StyleSheet.create({
   checkboxMark: { color: C.surface, fontWeight: '700', fontSize: 13 },
   taskName: { fontSize: 15, fontWeight: '600', color: C.textPrimary },
   taskDetails: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: C.divider },
+  scheduleNote: {
+    fontSize: 11,
+    color: C.textSecondary,
+    fontStyle: 'italic',
+    marginTop: 10,
+  },
   userRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   userChip: {
     paddingHorizontal: 10,

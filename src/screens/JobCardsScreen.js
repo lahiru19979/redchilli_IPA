@@ -39,11 +39,15 @@ const JobCardsScreen = ({ navigation }) => {
   const [filter, setFilter] = useState('ongoing');
   const [search, setSearch] = useState('');
   const [jobCards, setJobCards] = useState([]);
+  const [statusCounts, setStatusCounts] = useState({ ongoing: 0, completed: 0, delay: 0 });
 
   const loadData = useCallback(async (currentFilter, searchKey) => {
     try {
       const res = await taskAPI.getJobCards(currentFilter, searchKey || undefined);
       setJobCards(res.data.job_cards?.data || []);
+      if (res.data.status_counts) {
+        setStatusCounts(res.data.status_counts);
+      }
     } catch (error) {
       console.error('Load job cards error:', error?.response?.data || error);
       if (error?.response?.status !== 403) {
@@ -115,17 +119,23 @@ const JobCardsScreen = ({ navigation }) => {
       </View>
 
       <View style={styles.tabsRow}>
-        {FILTERS.map(f => (
-          <TouchableOpacity
-            key={f.key}
-            style={[styles.tab, filter === f.key && styles.tabActive]}
-            onPress={() => setFilter(f.key)}
-          >
-            <Text style={[styles.tabText, filter === f.key && styles.tabTextActive]}>
-              {f.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {FILTERS.map(f => {
+          const count =
+            f.key === 'all'
+              ? statusCounts.ongoing + statusCounts.completed + statusCounts.delay
+              : statusCounts[f.key] ?? 0;
+          return (
+            <TouchableOpacity
+              key={f.key}
+              style={[styles.tab, filter === f.key && styles.tabActive]}
+              onPress={() => setFilter(f.key)}
+            >
+              <Text style={[styles.tabText, filter === f.key && styles.tabTextActive]}>
+                {f.label} ({count})
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <View style={styles.searchWrap}>
