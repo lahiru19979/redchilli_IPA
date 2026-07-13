@@ -1,8 +1,8 @@
 {
   "name": "InvoiceApp",
-  "displayName": "InvoiceApp",
+  "displayName": "RC Merchant",
   "expo": {
-    "name": "InvoiceApp",
+    "name": "RC Merchant",
     "slug": "InvoiceApp",
     "owner": "lahiru_97",
     "android": {
