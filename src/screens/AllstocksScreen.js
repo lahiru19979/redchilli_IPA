@@ -10,12 +10,14 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {inventoryAPI} from '../api/apiClient';
 import AllInventoryCard from '../components/AllInventoryCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { C } from '../utils/theme';
 
 const AllStocksScreen = ({navigation}) => {
+  const insets = useSafeAreaInsets();
   const [inventories, setInventories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -179,7 +181,7 @@ const AllStocksScreen = ({navigation}) => {
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
         ListFooterComponent={renderFooter}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, {paddingBottom: 80 + insets.bottom}]}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📦</Text>
@@ -195,7 +197,7 @@ const AllStocksScreen = ({navigation}) => {
 
       {/* FAB - Scan Inventory */}
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, {bottom: 20 + insets.bottom}]}
         onPress={() => navigation.navigate('InventoryScan')}>
         <Text style={styles.fabText}>📷</Text>
       </TouchableOpacity>

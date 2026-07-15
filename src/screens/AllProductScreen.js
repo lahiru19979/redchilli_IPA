@@ -10,12 +10,14 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {productAPI} from '../api/apiClient';
 import ProductCard from '../components/AllProductCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { C } from '../utils/theme';
 
 const AllProductScreen = ({navigation}) => {
+  const insets = useSafeAreaInsets();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -205,7 +207,7 @@ const AllProductScreen = ({navigation}) => {
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
         ListFooterComponent={renderFooter}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, {paddingBottom: 100 + insets.bottom}]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -222,7 +224,7 @@ const AllProductScreen = ({navigation}) => {
 
       {/* FAB - Create Product */}
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, {bottom: 24 + insets.bottom}]}
         onPress={() => navigation.navigate('CreateProduct')}>
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>

@@ -8,12 +8,14 @@ import {
   RefreshControl,
   TextInput,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {productAPI} from '../api/apiClient';
 import ProductCard from '../components/ProductCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { C } from '../utils/theme';
 
 const ProductScreen = ({navigation}) => {
+  const insets = useSafeAreaInsets();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -132,7 +134,7 @@ const ProductScreen = ({navigation}) => {
             colors={[C.accent]}
           />
         }
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, {paddingBottom: 80 + insets.bottom}]}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📦</Text>
@@ -148,7 +150,7 @@ const ProductScreen = ({navigation}) => {
 
       {/* FAB - Add Product */}
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, {bottom: 20 + insets.bottom}]}
         onPress={() => navigation.navigate('CreateProduct')}>
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>

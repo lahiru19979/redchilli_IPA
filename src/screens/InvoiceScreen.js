@@ -9,6 +9,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {invoiceAPI} from '../api/apiClient';
 import InvoiceCard from '../components/InvoiceCard';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -16,6 +17,7 @@ import {useAuth} from '../context/AuthContext';
 import { C } from '../utils/theme';
 
 const InvoiceScreen = ({navigation}) => {
+  const insets = useSafeAreaInsets();
   const {hasPermission} = useAuth();
   // Accept either the new granular permission or the older, broader one that
   // already gated the whole Invoice module, so nothing breaks for existing
@@ -171,7 +173,7 @@ const InvoiceScreen = ({navigation}) => {
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
         ListFooterComponent={renderFooter}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, {paddingBottom: 80 + insets.bottom}]}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📄</Text>
@@ -188,7 +190,7 @@ const InvoiceScreen = ({navigation}) => {
       {/* FAB - Create Invoice */}
       {canCreate && (
         <TouchableOpacity
-          style={styles.fab}
+          style={[styles.fab, {bottom: 20 + insets.bottom}]}
           onPress={() => navigation.navigate('CreateInvoice')}>
           <Text style={styles.fabText}>+</Text>
         </TouchableOpacity>
