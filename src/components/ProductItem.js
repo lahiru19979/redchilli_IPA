@@ -1,11 +1,17 @@
 // components/ProductItem.js
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { getColorByID } from '../utils/colors';
 import { getSizeByID } from '../utils/sizes';
 import ColorPicker from './ColorPicker';
 import SizePicker from './SizePicker';
+
+const toAmount = (value) => {
+  if (typeof value === 'number') return isFinite(value) ? value : 0;
+  const parsed = parseFloat(String(value || '').replace(/[^0-9.-]/g, ''));
+  return isNaN(parsed) ? 0 : parsed;
+};
 
 const ProductItem = ({
   product,
@@ -13,12 +19,16 @@ const ProductItem = ({
   selectedPrice = 'sell_price1',
   selectedColor = 'white',
   selectedSize = 'm', // Add default size
+  discount = 0,
+  extra = 0,
   onIncrement,
   onDecrement,
   onRemove,
   onChangePrice,
   onChangeColor,
   onChangeSize, // Add size change handler
+  onChangeDiscount,
+  onChangeExtra,
   sizeType = 'letter', // 'letter', 'numeric', or 'all'
 }) => {
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -31,7 +41,8 @@ const ProductItem = ({
   };
 
   const price = getPrice();
-  const subtotal = price * quantity;
+  // Same shape as the web: qty * (unit price - discount + extra).
+  const subtotal = quantity * (price - toAmount(discount) + toAmount(extra));
 
   // Get color info
   const colorInfo = getColorByID(selectedColor);
@@ -146,6 +157,34 @@ const ProductItem = ({
               Rs.{product.sell_price3}
             </Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Per-unit Discount & Extra */}
+        <View style={styles.adjustRow}>
+          <View style={styles.adjustField}>
+            <Text style={styles.adjustLabel}>Discount / unit</Text>
+            <TextInput
+              style={styles.adjustInput}
+              keyboardType="numeric"
+              placeholder="0.00"
+              placeholderTextColor="#bbb"
+              value={discount ? String(discount) : ''}
+              onChangeText={(text) =>
+                onChangeDiscount && onChangeDiscount(toAmount(text))
+              }
+            />
+          </View>
+          <View style={styles.adjustField}>
+            <Text style={styles.adjustLabel}>Extra / unit</Text>
+            <TextInput
+              style={styles.adjustInput}
+              keyboardType="numeric"
+              placeholder="0.00"
+              placeholderTextColor="#bbb"
+              value={extra ? String(extra) : ''}
+              onChangeText={(text) => onChangeExtra && onChangeExtra(toAmount(text))}
+            />
+          </View>
         </View>
       </View>
 
@@ -333,6 +372,32 @@ const styles = StyleSheet.create({
   },
   priceBtnTextActive: {
     color: '#fff',
+  },
+  // Per-unit Discount & Extra
+  adjustRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  adjustField: {
+    flex: 1,
+  },
+  adjustLabel: {
+    fontSize: 10,
+    color: '#999',
+    marginBottom: 3,
+  },
+  adjustInput: {
+    height: 34,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 8,
+    paddingVertical: 0,
+    fontSize: 13,
+    color: '#333',
+    textAlign: 'right',
   },
   // Right Section
   rightSection: {

@@ -68,11 +68,13 @@ export const invoiceAPI = {
   // and the entire item list. Backend requires cus_id/cus_name/inv_date/items.
   updateFull: (id, data) => apiClient.put(`/invoices_update/${id}`, data),
 
-  // NOTE: still points at a route that doesn't exist (/invoices/{id}); kept
-  // as-is since fixing it also requires sending a full item list (see
-  // updateFull) and this is only used today by the (already broken)
-  // "Mark as Paid" action, which is out of scope for this fix.
-  update: (id, data) => apiClient.put(`/invoices/${id}`, data),
+  // Records a payment against the invoice. Replaces the old update() call,
+  // which PUT to /invoices/{id} - a route that never existed - and so always
+  // failed. `amount` is the amount received, as the web's payment form sends.
+  markAsPaid: (id, amount) =>
+    apiClient.post(`/invoice_payment_update/${id}`, {
+      payment_update: String(amount),
+    }),
 
   // Was pointed at a route that doesn't exist (/invoices/{id}); the real
   // delete endpoint is /invoice_delete/{id}.

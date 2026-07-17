@@ -14,6 +14,7 @@ import HomeScreen from '../screens/HomeScreen';
 import InvoiceScreen from '../screens/InvoiceScreen';
 import InvoiceDetailScreen from '../screens/InvoiceDetailScreen';
 import CreateInvoiceScreen from '../screens/CreateInvoiceScreen';
+import EditInvoiceScreen from '../screens/EditInvoiceScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import BarcodeScanScreen from '../screens/BarcodeScanScreen';
 import CreateProductScreen from '../screens/CreateProductScreen';
@@ -149,7 +150,7 @@ const AppNavigator = () => {
               />
               <Stack.Screen
                 name="EditInvoice"
-                component={CreateInvoiceScreen}
+                component={EditInvoiceScreen}
                 options={{ title: 'Edit Invoice' }}
               />
               <Stack.Screen

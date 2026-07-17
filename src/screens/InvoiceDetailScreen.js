@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,11 @@ import {
   Linking,
   ActivityIndicator,
 } from 'react-native';
+import {useFocusEffect} from '@react-navigation/native';
 import {invoiceAPI} from '../api/apiClient';
 import {getStatusInfo, formatDate} from '../utils/helpers';
 import {useAuth} from '../context/AuthContext';
+import {shareInvoiceOnWhatsApp} from '../utils/whatsapp';
 import { C } from '../utils/theme';
 
 const InvoiceDetailScreen = ({route, navigation}) => {
@@ -29,13 +31,7 @@ const InvoiceDetailScreen = ({route, navigation}) => {
 
   const statusInfo = getStatusInfo(invoiceDetails.status_label);
 
-  // Fetch full invoice details if needed
-  useEffect(() => {
-    fetchInvoiceDetails();
-  }, [fetchInvoiceDetails]);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const fetchInvoiceDetails = async () => {
+  const fetchInvoiceDetails = useCallback(async () => {
     try {
       setLoading(true);
       const response = await invoiceAPI.getById(invoice.id);
@@ -50,7 +46,16 @@ const InvoiceDetailScreen = ({route, navigation}) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [invoice]);
+
+  // Re-fetch every time this screen is focused, not just on mount, so
+  // returning from an edit shows the saved invoice rather than the copy
+  // this screen was opened with.
+  useFocusEffect(
+    useCallback(() => {
+      fetchInvoiceDetails();
+    }, [fetchInvoiceDetails]),
+  );
 
   const handleCall = () => {
     if (invoiceDetails.phone) {
@@ -70,53 +75,18 @@ const InvoiceDetailScreen = ({route, navigation}) => {
   // };
 
   const handleWhatsApp = async () => {
-    if (!invoiceDetails.phone || !invoiceDetails.id) {
-        Alert.alert('Error', 'Missing phone number or invoice ID.');
-        return;
-    }
-
     try {
-        setLoading(true);
-
-        // 1. Call the new API endpoint to generate and get the shareable PDF URL
-        const response = await invoiceAPI.getShareablePdfUrl(invoiceDetails.id);// Assuming apiClient is configured for the base API URL
-        
-        if (response.data.success && response.data.pdf_url) {
-            const { pdf_url, phone } = response.data;
-            let targetPhone = phone;
-
-            // Remove leading 0 and add country code (as you did previously)
-            if (targetPhone.startsWith('0')) {
-                // Assuming Sri Lanka country code '94'
-                targetPhone = '94' + targetPhone.substring(1); 
-            }
-            
-            // 2. Construct the WhatsApp deep link
-            // We'll use the URL and a pre-filled text message. WhatsApp deep linking for files is limited, 
-            // so sending the URL in the text is the standard way.
-            const message = `Dear Customer, please find your invoice attached.\n\nInvoice No: ${invoiceDetails.inv_no}\nTotal: Rs. ${invoiceDetails.grand_total}\n\nView/Download PDF: ${pdf_url}`;
-
-            const url = `whatsapp://send?phone=${targetPhone}&text=${encodeURIComponent(message)}`;
-
-            // 3. Open the WhatsApp link
-            const supported = await Linking.canOpenURL(url);
-
-            if (supported) {
-                await Linking.openURL(url);
-            } else {
-                Alert.alert('Error', 'WhatsApp is not installed.');
-            }
-        } else {
-            Alert.alert('Error', 'Failed to generate shareable PDF link.');
-        }
-
-    } catch (error) {
-        console.error('WhatsApp share error:', error);
-        Alert.alert('Error', 'Failed to prepare invoice for sharing. Please try again.');
+      setLoading(true);
+      await shareInvoiceOnWhatsApp({
+        id: invoiceDetails.id,
+        invNo: invoiceDetails.inv_no,
+        phone: invoiceDetails.phone,
+        total: invoiceDetails.grand_total,
+      });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-};
+  };
 
   const handleDelete = () => {
     Alert.alert(
@@ -141,14 +111,34 @@ const InvoiceDetailScreen = ({route, navigation}) => {
     );
   };
 
-  const handleMarkAsPaid = async () => {
+  const markAsPaid = async () => {
     try {
-      await invoiceAPI.update(invoice.id, {status: '11'}); // 11 = Paid
+      setLoading(true);
+      // The amount received is what the web's payment form records, and the
+      // grand total is what this screen shows as due.
+      await invoiceAPI.markAsPaid(invoiceDetails.id, invoiceDetails.grand_total);
+      await fetchInvoiceDetails();
       Alert.alert('Success', 'Invoice marked as paid');
-      navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Failed to update invoice');
+      console.error('Mark as paid error:', error);
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 'Failed to update invoice',
+      );
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleMarkAsPaid = () => {
+    Alert.alert(
+      'Mark as Paid',
+      `Record a payment of Rs. ${invoiceDetails.grand_total} for invoice ${invoiceDetails.inv_no}?`,
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {text: 'Confirm', onPress: markAsPaid},
+      ],
+    );
   };
 
   return (
@@ -292,7 +282,9 @@ const InvoiceDetailScreen = ({route, navigation}) => {
 
       {/* Action Buttons */}
       <View style={styles.actions}>
-        {canUpdatePayment && invoiceDetails.status !== '11' && invoiceDetails.status !== '9' && (
+        {/* payment_update holds the amount received, so its presence - not a
+            status code - is what means this invoice has been paid. */}
+        {canUpdatePayment && !invoiceDetails.payment_update && (
           <TouchableOpacity
             style={styles.paidButton}
             onPress={handleMarkAsPaid}>

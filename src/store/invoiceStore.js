@@ -1,17 +1,39 @@
 // store/invoiceStore.js
 
-// Simple store to hold invoice items in memory
-let invoiceItems = [];
-let customerInfo = {
+const emptyCustomerInfo = () => ({
   id: null,
   cus_id: '',
   name: '',
   phone: '',
   address: '',
   customerType: 'working', // working, online, redex
-};
+});
+
+// Simple store to hold invoice items in memory
+let invoiceItems = [];
+let customerInfo = emptyCustomerInfo();
+
+// Which invoice this in-memory draft belongs to ('create', 'edit:12', ...).
+// The store is a module-level singleton shared by the create and edit
+// screens, so without this an abandoned edit would leave its customer and
+// items behind and the next create would open pre-filled with them.
+let currentSession = null;
 
 const invoiceStore = {
+  // Claims the store for one invoice. Switching to a different invoice
+  // wipes the previous draft; re-entering the same one (e.g. coming back
+  // from the barcode scanner) keeps it, so work in progress survives.
+  beginSession: sessionId => {
+    if (currentSession !== sessionId) {
+      invoiceItems = [];
+      customerInfo = emptyCustomerInfo();
+      currentSession = sessionId;
+    }
+    return sessionId;
+  },
+
+  getSession: () => currentSession,
+
   // Get all items
   getItems: () => {
     return [...invoiceItems];
@@ -41,6 +63,9 @@ const invoiceStore = {
         priceType: priceType,
         color: color,
         size: size, // Store the size
+        // Per-unit adjustments, matching the web's discountRate_txt/extra_txt.
+        discount: 0,
+        extra: 0,
       });
       console.log('🛒 Store: Added new item');
     }
@@ -99,6 +124,30 @@ const invoiceStore = {
     return [...invoiceItems];
   },
 
+  // Per-unit discount taken off this line's unit price.
+  changeDiscount: (itemId, newDiscount) => {
+    invoiceItems = invoiceItems.map(item => {
+      if (item.id === itemId) {
+        return {...item, discount: newDiscount};
+      }
+      return item;
+    });
+
+    return [...invoiceItems];
+  },
+
+  // Per-unit extra charge added onto this line's unit price.
+  changeExtra: (itemId, newExtra) => {
+    invoiceItems = invoiceItems.map(item => {
+      if (item.id === itemId) {
+        return {...item, extra: newExtra};
+      }
+      return item;
+    });
+
+    return [...invoiceItems];
+  },
+
   // Bulk-replace all items at once (used when reloading an existing
   // invoice's items for editing) - bypasses addItem's dedupe/increment
   // logic since each row already carries its own exact quantity.
@@ -130,17 +179,12 @@ const invoiceStore = {
     return {...customerInfo};
   },
 
-  // Clear everything
+  // Clear everything and release the session, so the next screen to open
+  // starts from a clean draft rather than inheriting this one.
   clearAll: () => {
     invoiceItems = [];
-    customerInfo = {
-      id: null,
-      cus_id: '',
-      name: '',
-      phone: '',
-      address: '',
-      customerType: 'working',
-    };
+    customerInfo = emptyCustomerInfo();
+    currentSession = null;
   },
 };
 
