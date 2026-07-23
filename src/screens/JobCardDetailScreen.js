@@ -27,7 +27,8 @@ const StatusBadge = ({ badge }) => (
 const JobCardDetailScreen = ({ route, navigation }) => {
   const { id } = route.params;
   const { hasPermission } = useAuth();
-  const canReassign = hasPermission('edit_job_cards');
+  const canTransfer = hasPermission('transfer_job');
+  const canReset = hasPermission('reset_schedule');
   const canDelete = hasPermission('delete_job_cards');
 
   const [loading, setLoading] = useState(true);
@@ -210,7 +211,7 @@ const JobCardDetailScreen = ({ route, navigation }) => {
             </Text>
           )}
 
-          {canReassign && (task.expected_start_at || task.expected_end_at) && (
+          {canReset && (task.expected_start_at || task.expected_end_at) && (
             <TouchableOpacity style={styles.resetBtn} onPress={() => resetSchedule(task)}>
               <Text style={styles.resetBtnText}>Reset Schedule</Text>
             </TouchableOpacity>
@@ -239,13 +240,13 @@ const JobCardDetailScreen = ({ route, navigation }) => {
             )}
           </View>
 
-          {canReassign && (
+          {canTransfer && (
             <TouchableOpacity style={styles.transferBtn} onPress={() => startTransfer(task)}>
               <Text style={styles.transferBtnText}>Transfer this task</Text>
             </TouchableOpacity>
           )}
 
-          {canReassign && transferTaskId === task.id && (
+          {canTransfer && transferTaskId === task.id && (
             <View style={styles.transferPanel}>
               <Text style={styles.fieldLabelSmall}>Reason (optional)</Text>
               <TextInput
