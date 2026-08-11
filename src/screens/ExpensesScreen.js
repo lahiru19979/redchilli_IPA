@@ -12,8 +12,10 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import ImagePicker from 'react-native-image-crop-picker';
+import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import { costAPI, MEDIA_BASE_URL } from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import SelectField from '../components/SelectField';
@@ -36,7 +38,6 @@ const ExpensesScreen = () => {
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [existingImage, setExistingImage] = useState(null);
-  const [costType, setCostType] = useState(null);
   const [costCode, setCostCode] = useState(null);
   const [costDes, setCostDes] = useState(null);
   const [amount, setAmount] = useState('');
@@ -79,30 +80,61 @@ const ExpensesScreen = () => {
   }, [loadData]);
 
   // Cascading options
-  const codeOptions = meta.codes
-    .filter(c => !costType || String(c.cost_type) === String(costType))
-    .map(c => ({ label: c.cost_code, value: c.id }));
+  const codeOptions = meta.codes.map(c => ({
+    label: c.cost_code,
+    value: c.id,
+  }));
 
   const desOptions = meta.descriptions
     .filter(d => !costCode || String(d.cost_code) === String(costCode))
     .map(d => ({ label: d.cost_des, value: d.id }));
 
-  const typeOptions = meta.types.map(t => ({ label: t.cost_type, value: t.id }));
+  const pickerOptions = {
+    width: 1200,
+    height: 1200,
+    cropping: false,
+    compressImageQuality: 0.8,
+    mediaType: 'photo',
+  };
+
+  const applyPhoto = image => {
+    setPhoto({
+      uri: image.path,
+      type: image.mime || 'image/jpeg',
+      name: image.filename || `expense_${Date.now()}.jpg`,
+    });
+  };
+
+  const requestCameraPermission = async () => {
+    const permission =
+      Platform.OS === 'android'
+        ? PERMISSIONS.ANDROID.CAMERA
+        : PERMISSIONS.IOS.CAMERA;
+
+    const result = await check(permission);
+    if (result === RESULTS.GRANTED) return true;
+    const requested = await request(permission);
+    return requested === RESULTS.GRANTED;
+  };
 
   const pickPhoto = async () => {
     try {
-      const image = await ImagePicker.openPicker({
-        width: 1200,
-        height: 1200,
-        cropping: false,
-        compressImageQuality: 0.8,
-        mediaType: 'photo',
-      });
-      setPhoto({
-        uri: image.path,
-        type: image.mime || 'image/jpeg',
-        name: image.filename || `expense_${Date.now()}.jpg`,
-      });
+      const image = await ImagePicker.openPicker(pickerOptions);
+      applyPhoto(image);
+    } catch (e) {
+      // user cancelled - ignore
+    }
+  };
+
+  const capturePhoto = async () => {
+    const granted = await requestCameraPermission();
+    if (!granted) {
+      Alert.alert('Permission Denied', 'Camera permission is required.');
+      return;
+    }
+    try {
+      const image = await ImagePicker.openCamera(pickerOptions);
+      applyPhoto(image);
     } catch (e) {
       // user cancelled - ignore
     }
@@ -111,7 +143,6 @@ const ExpensesScreen = () => {
   const resetForm = () => {
     setEditingId(null);
     setExistingImage(null);
-    setCostType(null);
     setCostCode(null);
     setCostDes(null);
     setAmount('');
@@ -120,11 +151,6 @@ const ExpensesScreen = () => {
 
   const startEdit = item => {
     setEditingId(item.id);
-    // Derive the parent cost type from the selected cost code
-    const parentCode = meta.codes.find(
-      c => String(c.id) === String(item.cost_code),
-    );
-    setCostType(parentCode ? parentCode.cost_type : null);
     setCostCode(item.cost_code);
     setCostDes(item.cost_des);
     setAmount(item.amount != null ? String(item.amount) : '');
@@ -218,17 +244,6 @@ const ExpensesScreen = () => {
             {editingId ? 'Edit Expense' : 'New Expense'}
           </Text>
           <SelectField
-            label="Cost Type"
-            placeholder="Select cost type"
-            options={typeOptions}
-            value={costType}
-            onChange={v => {
-              setCostType(v);
-              setCostCode(null);
-              setCostDes(null);
-            }}
-          />
-          <SelectField
             label="Cost Code"
             placeholder="Select cost code"
             options={codeOptions}
@@ -269,14 +284,30 @@ const ExpensesScreen = () => {
                 source={{ uri: `${MEDIA_BASE_URL}/${existingImage}` }}
                 style={styles.photoPreview}
               />
-              <TouchableOpacity onPress={pickPhoto}>
-                <Text style={styles.photoBtnText}>Change Photo</Text>
-              </TouchableOpacity>
+              <View>
+                <TouchableOpacity onPress={capturePhoto}>
+                  <Text style={styles.photoBtnText}>📷 Take Photo</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={pickPhoto} style={styles.changeAlt}>
+                  <Text style={styles.photoBtnText}>🖼 Choose Photo</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : (
-            <TouchableOpacity style={styles.photoBtn} onPress={pickPhoto}>
-              <Text style={styles.photoBtnText}>📷 Choose Photo</Text>
-            </TouchableOpacity>
+            <View style={styles.photoBtnRow}>
+              <TouchableOpacity
+                style={[styles.photoBtn, styles.photoBtnHalf]}
+                onPress={capturePhoto}
+              >
+                <Text style={styles.photoBtnText}>📷 Take Photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.photoBtn, styles.photoBtnHalf]}
+                onPress={pickPhoto}
+              >
+                <Text style={styles.photoBtnText}>🖼 Choose Photo</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           <TouchableOpacity
@@ -387,6 +418,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   photoBtnText: { color: C.accent, fontWeight: '600' },
+  photoBtnRow: { flexDirection: 'row', gap: 10 },
+  photoBtnHalf: { flex: 1 },
+  changeAlt: { marginTop: 8 },
   photoPreviewRow: {
     flexDirection: 'row',
     alignItems: 'center',
