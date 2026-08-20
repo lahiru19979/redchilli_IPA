@@ -30,6 +30,8 @@ import BudgetScreen from '../screens/BudgetScreen';
 import CostTypesScreen from '../screens/CostTypesScreen';
 import CostGroupsScreen from '../screens/CostGroupsScreen';
 import CostDescriptionsScreen from '../screens/CostDescriptionsScreen';
+import WhatsAppChatsScreen from '../screens/WhatsAppChatsScreen';
+import WhatsAppThreadScreen from '../screens/WhatsAppThreadScreen';
 import TaskManagerScreen from '../screens/TaskManagerScreen';
 import JobCardsScreen from '../screens/JobCardsScreen';
 import CreateJobCardScreen from '../screens/CreateJobCardScreen';
@@ -236,6 +238,17 @@ const AppNavigator = () => {
                 name="CostDescriptions"
                 component={CostDescriptionsScreen}
                 options={{ title: 'Cost Descriptions' }}
+              />
+
+              <Stack.Screen
+                name="WhatsAppChats"
+                component={WhatsAppChatsScreen}
+                options={{ title: 'WhatsApp' }}
+              />
+              <Stack.Screen
+                name="WhatsAppThread"
+                component={WhatsAppThreadScreen}
+                options={{ title: 'Chat' }}
               />
 
               <Stack.Screen

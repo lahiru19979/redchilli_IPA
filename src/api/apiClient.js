@@ -208,4 +208,66 @@ export const customerAPI = {
   search: query => apiClient.get(`/cusname?search=${query}`),
 };
 
+// WhatsApp CRM — mirrors the web inbox, sharing the same backend service.
+export const whatsappAPI = {
+  getChats: (page = 1, search = '', view = '', label = '') =>
+    apiClient.get('/whatsapp/chats', { params: { page, search, view, label } }),
+
+  getLabels: (customerId = '') =>
+    apiClient.get('/whatsapp/labels', { params: { customer_id: customerId } }),
+
+  toggleLabel: (customerId, labelId, value) =>
+    apiClient.post(`/whatsapp/chats/${customerId}/label`, {
+      label_id: labelId,
+      value,
+    }),
+
+  // action: archive | mute | pin | favorite | mark_unread | block | clear | delete
+  chatAction: (customerId, action, value = true) =>
+    apiClient.post(`/whatsapp/chats/${customerId}/action`, { action, value }),
+
+  // Omit sinceId for the full thread; pass it to poll for new messages only.
+  getMessages: (customerId, sinceId = 0) =>
+    apiClient.get(`/whatsapp/chats/${customerId}/messages`, {
+      params: sinceId ? { since_id: sinceId } : {},
+    }),
+
+  sendText: (customerId, message) =>
+    apiClient.post('/whatsapp/send', { customer_id: customerId, message }),
+
+  sendMedia: formData =>
+    apiClient.post('/whatsapp/send-media', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      // Media can be far slower than the 10s default, especially on mobile data.
+      timeout: 120000,
+    }),
+
+  getUnread: () => apiClient.get('/whatsapp/unread'),
+
+  // Start a chat with a number that isn't saved yet.
+  startChat: (phone, customerName = '') =>
+    apiClient.post('/whatsapp/customers', {
+      phone,
+      customer_name: customerName,
+    }),
+
+  getTemplates: () => apiClient.get('/whatsapp/templates'),
+
+  // mode: 'share' (needs latitude/longitude) or 'request'
+  sendLocation: payload => apiClient.post('/whatsapp/send-location', payload),
+
+  searchMessages: (customerId, q) =>
+    apiClient.get(`/whatsapp/chats/${customerId}/search`, { params: { q } }),
+
+  getChatMedia: customerId =>
+    apiClient.get(`/whatsapp/chats/${customerId}/media`),
+
+  sendTemplate: (customerId, templateId, variables = []) =>
+    apiClient.post('/whatsapp/send-template', {
+      customer_id: customerId,
+      template_id: templateId,
+      variables,
+    }),
+};
+
 export default apiClient;

@@ -73,6 +73,16 @@ const ACTION_CARDS = [
     screen: 'TaskManager',
     permission: 'view_my_tasks',
   },
+  {
+    id: 'whatsapp',
+    icon: '💬',
+    title: 'WhatsApp',
+    subtitle: 'Customer chats',
+    color: '#25D366',
+    screen: 'WhatsAppChats',
+    // Reading the inbox needs no extra permission, matching the web CRM.
+    permission: null,
+  },
 ];
 
 // Stat cards configuration
