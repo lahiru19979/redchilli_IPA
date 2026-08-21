@@ -411,6 +411,36 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
             <Text style={styles.deleted}>This message was deleted</Text>
           ) : (
             <>
+              {item.referral && (
+                <TouchableOpacity
+                  style={styles.adCard}
+                  onPress={() =>
+                    item.referral.source_url &&
+                    Linking.openURL(item.referral.source_url).catch(() => {})
+                  }
+                >
+                  {!!item.referral.thumbnail_url && (
+                    <Image
+                      source={{ uri: item.referral.thumbnail_url }}
+                      style={styles.adThumb}
+                    />
+                  )}
+                  <View style={styles.adMeta}>
+                    <Text style={styles.adTag}>FROM AN AD</Text>
+                    {!!item.referral.headline && (
+                      <Text style={styles.adHeadline} numberOfLines={1}>
+                        {item.referral.headline}
+                      </Text>
+                    )}
+                    {!!item.referral.body && (
+                      <Text style={styles.adBody} numberOfLines={2}>
+                        {item.referral.body}
+                      </Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              )}
+
               {item.type === 'image' && item.media_url && (
                 <Image source={{ uri: item.media_url }} style={styles.media} />
               )}
@@ -878,6 +908,21 @@ const styles = StyleSheet.create({
   deleted: { fontSize: 14, color: C.textSecondary, fontStyle: 'italic' },
   link: { fontSize: 14.5, color: C.accent, textDecorationLine: 'underline' },
   inlineLink: { color: '#027eb5', textDecorationLine: 'underline' },
+  adCard: {
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#25D366',
+    borderRadius: 6,
+    padding: 6,
+    marginBottom: 6,
+  },
+  adThumb: { width: 48, height: 48, borderRadius: 4 },
+  adMeta: { flex: 1, minWidth: 0 },
+  adTag: { fontSize: 10, fontWeight: '700', color: '#25D366' },
+  adHeadline: { fontSize: 12.5, fontWeight: '600', color: '#111B21' },
+  adBody: { fontSize: 11.5, color: '#54656F' },
   media: { width: 200, height: 200, borderRadius: 8, marginBottom: 4 },
   metaRow: {
     flexDirection: 'row',
