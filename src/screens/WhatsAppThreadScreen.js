@@ -166,7 +166,7 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
   useEffect(() => {
     const timer = setInterval(() => {
       poll().catch(() => {});
-    }, 3000);
+    }, 2000);
 
     return () => clearInterval(timer);
   }, [poll]);
@@ -369,6 +369,26 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
     }
   };
 
+  // Splits a body into plain runs and tappable links. React Native has no
+  // equivalent of an <a> tag, so the text has to be broken up manually.
+  const renderBody = body => {
+    const parts = String(body).split(/(https?:\/\/[^\s]+)/gi);
+
+    return parts.map((part, i) =>
+      /^https?:\/\//i.test(part) ? (
+        <Text
+          key={i}
+          style={styles.inlineLink}
+          onPress={() => Linking.openURL(part).catch(() => {})}
+        >
+          {part}
+        </Text>
+      ) : (
+        part
+      ),
+    );
+  };
+
   const tick = status => {
     if (status === 'read') return '✓✓';
     if (status === 'delivered') return '✓✓';
@@ -419,7 +439,7 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
               {!!item.body &&
                 !['location'].includes(item.type) &&
                 item.type !== 'document' && (
-                  <Text style={styles.body}>{item.body}</Text>
+                  <Text style={styles.body}>{renderBody(item.body)}</Text>
                 )}
             </>
           )}
@@ -857,6 +877,7 @@ const styles = StyleSheet.create({
   body: { fontSize: 14.5, color: '#111B21' },
   deleted: { fontSize: 14, color: C.textSecondary, fontStyle: 'italic' },
   link: { fontSize: 14.5, color: C.accent, textDecorationLine: 'underline' },
+  inlineLink: { color: '#027eb5', textDecorationLine: 'underline' },
   media: { width: 200, height: 200, borderRadius: 8, marginBottom: 4 },
   metaRow: {
     flexDirection: 'row',

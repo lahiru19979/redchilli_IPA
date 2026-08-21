@@ -102,14 +102,14 @@ const WhatsAppChatsScreen = ({ navigation }) => {
   }, [search, view, activeLabel, load]);
 
   // Refresh whenever the screen regains focus (e.g. coming back from a thread,
-  // where messages will have been marked read) and every 5s while it is open.
+  // where messages will have been marked read) and every 3s while it is open.
   useFocusEffect(
     useCallback(() => {
       load(1, searchRef.current, viewRef.current, labelRef.current).catch(() => {});
 
       const timer = setInterval(() => {
         load(1, searchRef.current, viewRef.current, labelRef.current).catch(() => {});
-      }, 5000);
+      }, 3000);
 
       return () => clearInterval(timer);
     }, [load]),
