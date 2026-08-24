@@ -16,13 +16,15 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import DateTimeField from '../components/DateTimeField';
 import { C } from '../utils/theme';
 
-const CreateJobCardScreen = ({ navigation }) => {
+const CreateJobCardScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [taskTypes, setTaskTypes] = useState([]);
   const [users, setUsers] = useState([]);
 
-  const [phoneNumber, setPhoneNumber] = useState('');
+  // Opened from a WhatsApp chat's Jobs panel, the customer's number comes
+  // through so the agent does not have to retype it.
+  const [phoneNumber, setPhoneNumber] = useState(route.params?.phone || '');
   const [deliveryAt, setDeliveryAt] = useState('');
   const [selectedTypes, setSelectedTypes] = useState({}); // { [taskTypeId]: true }
   const [assignedUser, setAssignedUser] = useState({}); // { [taskTypeId]: userId }

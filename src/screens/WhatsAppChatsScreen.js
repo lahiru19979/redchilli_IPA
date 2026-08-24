@@ -52,6 +52,14 @@ const WhatsAppChatsScreen = ({ navigation }) => {
   const [view, setView] = useState('');
   const [busyAction, setBusyAction] = useState(false);
 
+  // Chats / Unread / Favourites / Archived totals, sent with every chat page.
+  const [viewCounts, setViewCounts] = useState({
+    chats: 0,
+    unread: 0,
+    favorites: 0,
+    archived: 0,
+  });
+
   const [labels, setLabels] = useState([]);
   const [activeLabel, setActiveLabel] = useState('');
   const [labelSheet, setLabelSheet] = useState(null); // chat being labelled
@@ -66,6 +74,8 @@ const WhatsAppChatsScreen = ({ navigation }) => {
   viewRef.current = view;
   const labelRef = useRef('');
   labelRef.current = activeLabel;
+  const pageRef = useRef(1);
+  pageRef.current = page;
 
   useEffect(() => {
     navigation.setOptions({
@@ -82,7 +92,19 @@ const WhatsAppChatsScreen = ({ navigation }) => {
 
   const load = useCallback(async (pageNo = 1, term = '', which = '', label = '') => {
     const res = await whatsappAPI.getChats(pageNo, term, which, label);
+
+    // A reply for a filter the agent has already moved away from would repopulate
+    // the list with the wrong chats — which is what made tapping Unread or a
+    // label look like it did nothing when a poll was already in flight.
+    const stale =
+      `${term}|${which}|${label}`
+      !== `${searchRef.current}|${viewRef.current}|${labelRef.current}`;
+
+    if (stale) return;
+
     const data = res.data;
+
+    if (data.view_counts) setViewCounts(data.view_counts);
 
     setHasMore(!!data.has_more);
     setPage(data.current_page || pageNo);
@@ -108,6 +130,11 @@ const WhatsAppChatsScreen = ({ navigation }) => {
       load(1, searchRef.current, viewRef.current, labelRef.current).catch(() => {});
 
       const timer = setInterval(() => {
+        // Polling page 1 replaces the whole list, so it would throw away the
+        // pages the agent has already scrolled through. Hold off until they are
+        // back at the top (or pull to refresh).
+        if (pageRef.current > 1) return;
+
         load(1, searchRef.current, viewRef.current, labelRef.current).catch(() => {});
       }, 3000);
 
@@ -144,20 +171,25 @@ const WhatsAppChatsScreen = ({ navigation }) => {
     }
   };
 
-  useEffect(() => {
-    whatsappAPI
-      .getLabels()
-      .then(res => setLabels(res.data.labels || []))
-      .catch(error => {
-        // Swallowing this made a missing endpoint look identical to having no
-        // labels at all, which is impossible to diagnose from the phone.
-        setLabelError(
-          error?.response?.status
-            ? `Labels unavailable (HTTP ${error.response.status})`
-            : 'Labels unavailable - no connection',
-        );
-      });
+  const loadLabels = useCallback(async () => {
+    try {
+      const res = await whatsappAPI.getLabels();
+      setLabels(res.data.labels || []);
+      setLabelError('');
+    } catch (error) {
+      // Swallowing this made a missing endpoint look identical to having no
+      // labels at all, which is impossible to diagnose from the phone.
+      setLabelError(
+        error?.response?.status
+          ? `Labels unavailable (HTTP ${error.response.status})`
+          : 'Labels unavailable - no connection',
+      );
+    }
   }, []);
+
+  useEffect(() => {
+    loadLabels();
+  }, [loadLabels]);
 
   const openLabelSheet = async chat => {
     setLabelSheet(chat);
@@ -185,7 +217,9 @@ const WhatsAppChatsScreen = ({ navigation }) => {
 
     try {
       await whatsappAPI.toggleLabel(labelSheet.id, label.id, !on);
-      await load(1, search, view, activeLabel);
+      // The pill counts come from the labels endpoint, so they go stale unless
+      // it is asked again after a change.
+      await Promise.all([load(1, search, view, activeLabel), loadLabels()]);
     } catch (error) {
       // Put it back the way it was if the server refused.
       setAppliedLabels(prev =>
@@ -239,6 +273,14 @@ const WhatsAppChatsScreen = ({ navigation }) => {
     await load(page + 1, search, view, activeLabel).catch(() => {});
     setLoadingMore(false);
   };
+
+  const clearFilters = () => {
+    setView('');
+    setActiveLabel('');
+    setSearch('');
+  };
+
+  const filtersOn = !!view || !!activeLabel || !!search.trim();
 
   const timeLabel = iso => {
     if (!iso) return '';
@@ -333,26 +375,30 @@ const WhatsAppChatsScreen = ({ navigation }) => {
           ['unread', 'Unread'],
           ['favorites', 'Favourites'],
           ['archived', 'Archived'],
-        ].map(([key, label]) => (
-          <TouchableOpacity
-            key={key || 'inbox'}
-            style={[
-              styles.viewTab,
-              styles.viewTabSpacing,
-              view === key && styles.viewTabActive,
-            ]}
-            onPress={() => setView(key)}
-          >
-            <Text
+        ].map(([key, label]) => {
+          const total = viewCounts[key || 'chats'] ?? 0;
+
+          return (
+            <TouchableOpacity
+              key={key || 'inbox'}
               style={[
-                styles.viewTabText,
-                view === key && styles.viewTabTextActive,
+                styles.viewTab,
+                styles.viewTabSpacing,
+                view === key && styles.viewTabActive,
               ]}
+              onPress={() => setView(key)}
             >
-              {label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text
+                style={[
+                  styles.viewTabText,
+                  view === key && styles.viewTabTextActive,
+                ]}
+              >
+                {label} ({total})
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {!!labelError && <Text style={styles.labelError}>{labelError}</Text>}
@@ -407,7 +453,19 @@ const WhatsAppChatsScreen = ({ navigation }) => {
         onEndReached={onEndReached}
         onEndReachedThreshold={0.4}
         ListEmptyComponent={
-          <Text style={styles.empty}>No chats found.</Text>
+          <View style={styles.emptyWrap}>
+            <Text style={styles.empty}>
+              {filtersOn
+                ? 'No chats match these filters.'
+                : 'No chats yet.'}
+            </Text>
+
+            {filtersOn && (
+              <TouchableOpacity style={styles.clearBtn} onPress={clearFilters}>
+                <Text style={styles.clearBtnText}>Clear filters</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         }
         ListFooterComponent={
           loadingMore ? (
@@ -681,6 +739,15 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  emptyWrap: { alignItems: 'center', paddingTop: 40, gap: 12 },
+  clearBtn: {
+    borderWidth: 1,
+    borderColor: C.accent,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  clearBtnText: { color: C.accent, fontWeight: '700', fontSize: 13 },
   labelRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 },
   labelChip: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 },
   labelText: { color: '#fff', fontSize: 10, fontWeight: '600' },

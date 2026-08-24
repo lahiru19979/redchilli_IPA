@@ -32,6 +32,7 @@ import CostGroupsScreen from '../screens/CostGroupsScreen';
 import CostDescriptionsScreen from '../screens/CostDescriptionsScreen';
 import WhatsAppChatsScreen from '../screens/WhatsAppChatsScreen';
 import WhatsAppThreadScreen from '../screens/WhatsAppThreadScreen';
+import WhatsAppJobsScreen from '../screens/WhatsAppJobsScreen';
 import TaskManagerScreen from '../screens/TaskManagerScreen';
 import JobCardsScreen from '../screens/JobCardsScreen';
 import CreateJobCardScreen from '../screens/CreateJobCardScreen';
@@ -249,6 +250,12 @@ const AppNavigator = () => {
                 name="WhatsAppThread"
                 component={WhatsAppThreadScreen}
                 options={{ title: 'Chat' }}
+              />
+
+              <Stack.Screen
+                name="WhatsAppJobs"
+                component={WhatsAppJobsScreen}
+                options={{ title: 'Jobs' }}
               />
 
               <Stack.Screen

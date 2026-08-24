@@ -232,8 +232,12 @@ export const whatsappAPI = {
       params: sinceId ? { since_id: sinceId } : {},
     }),
 
-  sendText: (customerId, message) =>
-    apiClient.post('/whatsapp/send', { customer_id: customerId, message }),
+  sendText: (customerId, message, replyToId = null) =>
+    apiClient.post('/whatsapp/send', {
+      customer_id: customerId,
+      message,
+      reply_to_id: replyToId,
+    }),
 
   sendMedia: formData =>
     apiClient.post('/whatsapp/send-media', formData, {
@@ -256,11 +260,77 @@ export const whatsappAPI = {
   // mode: 'share' (needs latitude/longitude) or 'request'
   sendLocation: payload => apiClient.post('/whatsapp/send-location', payload),
 
+  // Per-message pin and star. Omit `value` to flip whatever the message is now.
+  pinMessage: (messageId, value) =>
+    apiClient.post(`/whatsapp/messages/${messageId}/pin`, { value }),
+
+  starMessage: (messageId, value) =>
+    apiClient.post(`/whatsapp/messages/${messageId}/star`, { value }),
+
+  getPinned: customerId =>
+    apiClient.get(`/whatsapp/chats/${customerId}/pinned`),
+
+  // Pass an empty emoji to clear an existing reaction.
+  react: (messageId, emoji) =>
+    apiClient.post(`/whatsapp/messages/${messageId}/react`, { emoji }),
+
+  // scope: 'me' removes it from the thread, 'everyone' leaves a tombstone.
+  deleteMessage: (messageId, scope) =>
+    apiClient.delete(`/whatsapp/messages/${messageId}`, { params: { scope } }),
+
+  forward: (messageId, customerIds) =>
+    apiClient.post('/whatsapp/forward', {
+      message_id: messageId,
+      customer_ids: customerIds,
+    }),
+
   searchMessages: (customerId, q) =>
     apiClient.get(`/whatsapp/chats/${customerId}/search`, { params: { q } }),
 
   getChatMedia: customerId =>
     apiClient.get(`/whatsapp/chats/${customerId}/media`),
+
+  // Sends the whole connected commerce catalog as one browsable message.
+  sendCatalog: (customerId, body, footer = '') =>
+    apiClient.post('/whatsapp/send-catalog', {
+      customer_id: customerId,
+      body,
+      footer,
+    }),
+
+  searchProducts: (q = '') =>
+    apiClient.get('/whatsapp/product-search', { params: { q } }),
+
+  sendProducts: (customerId, productIds, header, body, footer = '') =>
+    apiClient.post('/whatsapp/send-products', {
+      customer_id: customerId,
+      product_ids: productIds,
+      header,
+      body,
+      footer,
+    }),
+
+  // Saved replies: the agent's own canned messages, shared with the web CRM.
+  getSavedReplies: () => apiClient.get('/whatsapp/saved-replies'),
+
+  // FormData so photos picked on the phone can ride along; pass an `id` field
+  // to update an existing reply.
+  saveSavedReply: formData =>
+    apiClient.post('/whatsapp/saved-replies', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    }),
+
+  deleteSavedReply: replyId =>
+    apiClient.delete(`/whatsapp/saved-replies/${replyId}`),
+
+  sendSavedReply: (customerId, replyId) =>
+    apiClient.post(
+      '/whatsapp/send-saved-reply',
+      { customer_id: customerId, reply_id: replyId },
+      // Several photos go out one after another server-side.
+      { timeout: 180000 },
+    ),
 
   sendTemplate: (customerId, templateId, variables = []) =>
     apiClient.post('/whatsapp/send-template', {
