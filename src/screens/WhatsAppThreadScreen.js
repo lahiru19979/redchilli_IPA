@@ -168,11 +168,29 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
   // message, so auto-scroll only applies while the newest message is in view.
   const atBottomRef = useRef(true);
 
+  // A normal phone call, not a WhatsApp call: tel: hands the number to the
+  // dialer with it already typed in, so the agent still chooses to dial.
+  const callCustomer = () => {
+    if (!phone) return;
+
+    const dial = `tel:${String(phone).replace(/[^0-9+]/g, '')}`;
+
+    Linking.openURL(dial).catch(() =>
+      Alert.alert('Could not call', 'This device cannot place phone calls.'),
+    );
+  };
+
   useEffect(() => {
     navigation.setOptions({
       title: name || phone || 'Chat',
       headerRight: () => (
         <View style={styles.headerRow}>
+          {!!phone && (
+            <TouchableOpacity style={styles.headerBtn} onPress={callCustomer}>
+              <Text style={styles.headerIcon}>📞</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={styles.headerBtn}
             onPress={() => setSearchOpen(true)}
@@ -416,7 +434,11 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
   // download manager (and iOS's share sheet), which saves it and shows the usual
   // notification. Saving straight into the gallery would need a filesystem
   // module and another native build, which this does not.
-  const downloadFile = url => {
+  // Prefer the signed download link: it streams the file with a
+  // Content-Disposition header, which is the only way the browser learns the
+  // real filename. Opening the plain media URL saves it under the stored hash.
+  const downloadFile = (downloadUrl, mediaUrl) => {
+    const url = downloadUrl || mediaUrl;
     if (!url) return;
 
     // Media saved before the public disk had a url configured is stored as a
@@ -1284,7 +1306,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
 
                   <TouchableOpacity
                     style={styles.mediaDl}
-                    onPress={() => downloadFile(item.media_url)}
+                    onPress={() => downloadFile(item.download_url, item.media_url)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
                     <Text style={styles.mediaDlIcon}>⤓</Text>
@@ -1325,7 +1347,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
 
                     <TouchableOpacity
                       style={styles.fileDl}
-                      onPress={() => downloadFile(item.media_url)}
+                      onPress={() => downloadFile(item.download_url, item.media_url)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
                       <Text style={styles.fileDlIcon}>⤓</Text>
@@ -1854,7 +1876,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
 
                         <TouchableOpacity
                           style={styles.mediaDl}
-                          onPress={() => downloadFile(m.url)}
+                          onPress={() => downloadFile(m.download_url, m.url)}
                         >
                           <Text style={styles.mediaDlIcon}>⤓</Text>
                         </TouchableOpacity>
@@ -1878,7 +1900,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                       {mediaTab !== 'links' && (
                         <TouchableOpacity
                           style={styles.fileDl}
-                          onPress={() => downloadFile(item.url)}
+                          onPress={() => downloadFile(item.download_url, item.url)}
                         >
                           <Text style={styles.fileDlIcon}>⤓</Text>
                         </TouchableOpacity>

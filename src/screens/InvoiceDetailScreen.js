@@ -13,7 +13,7 @@ import {useFocusEffect} from '@react-navigation/native';
 import {invoiceAPI} from '../api/apiClient';
 import {getStatusInfo, formatDate} from '../utils/helpers';
 import {useAuth} from '../context/AuthContext';
-import {shareInvoiceOnWhatsApp} from '../utils/whatsapp';
+import {sendInvoiceViaCrm, downloadInvoicePdf} from '../utils/whatsapp';
 import { C } from '../utils/theme';
 
 const InvoiceDetailScreen = ({route, navigation}) => {
@@ -77,12 +77,20 @@ const InvoiceDetailScreen = ({route, navigation}) => {
   const handleWhatsApp = async () => {
     try {
       setLoading(true);
-      await shareInvoiceOnWhatsApp({
+      await sendInvoiceViaCrm({
         id: invoiceDetails.id,
         invNo: invoiceDetails.inv_no,
         phone: invoiceDetails.phone,
-        total: invoiceDetails.grand_total,
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      setLoading(true);
+      await downloadInvoicePdf({id: invoiceDetails.id});
     } finally {
       setLoading(false);
     }
@@ -195,6 +203,11 @@ const InvoiceDetailScreen = ({route, navigation}) => {
           <TouchableOpacity style={styles.quickActionBtn} onPress={handleWhatsApp}>
             <Text style={styles.quickActionIcon}>💬</Text>
             <Text style={styles.quickActionText}>WhatsApp</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.quickActionBtn} onPress={handleDownload}>
+            <Text style={styles.quickActionIcon}>⤓</Text>
+            <Text style={styles.quickActionText}>Download</Text>
           </TouchableOpacity>
         </View>
       </View>

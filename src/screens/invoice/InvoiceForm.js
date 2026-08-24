@@ -62,6 +62,16 @@ const InvoiceForm = ({
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [showPhoneDropdown, setShowPhoneDropdown] = useState(false);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
+
+  // "Add customer" form, shown inside the customer picker.
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [savingCustomer, setSavingCustomer] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({
+    customer_name: '',
+    phone: '',
+    phone_second: '',
+    address: '',
+  });
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -150,6 +160,61 @@ const InvoiceForm = ({
     setSelectedCustomer(customer);
     setPhoneSearch(customer.phone);
     setShowPhoneDropdown(false);
+  };
+
+  const openNewCustomer = () => {
+    // Carry whatever was typed in the search box over as the phone number when
+    // it looks like one — that is usually why no customer matched.
+    const digits = phoneSearch.replace(/\D/g, '');
+
+    setNewCustomer({
+      customer_name: '',
+      phone: digits.length >= 6 ? digits : '',
+      phone_second: '',
+      address: '',
+    });
+    setShowNewCustomer(true);
+  };
+
+  const saveNewCustomer = async () => {
+    if (savingCustomer) return;
+
+    const payload = {
+      customer_name: newCustomer.customer_name.trim(),
+      phone: newCustomer.phone.replace(/\D/g, ''),
+      phone_second: newCustomer.phone_second.replace(/\D/g, '') || undefined,
+      address: newCustomer.address.trim(),
+    };
+
+    if (!payload.customer_name || !payload.phone || !payload.address) {
+      Alert.alert('Missing info', 'Name, mobile and address are all required.');
+      return;
+    }
+
+    setSavingCustomer(true);
+
+    try {
+      const res = await customerAPI.create(payload);
+      const created = res.data.customer;
+
+      // Put it in the list straight away so it is there if the agent reopens the
+      // picker, then select it and close — the point is to get back to the
+      // invoice, not to hunt for the new row.
+      setCustomers(prev => [created, ...prev]);
+      setFilteredCustomers(prev => [created, ...prev]);
+      setShowNewCustomer(false);
+      selectCustomer(created);
+    } catch (error) {
+      const errors = error?.response?.data?.errors;
+      const first = errors ? Object.values(errors)[0]?.[0] : null;
+
+      Alert.alert(
+        'Not saved',
+        first || error?.response?.data?.message || 'Could not add that customer.',
+      );
+    } finally {
+      setSavingCustomer(false);
+    }
   };
 
   const clearCustomer = () => {
@@ -554,6 +619,11 @@ const InvoiceForm = ({
             <View style={styles.phoneModalHeader}>
               <Text style={styles.phoneModalTitle}>Select Customer</Text>
               <TouchableOpacity
+                style={styles.newCustomerBtn}
+                onPress={openNewCustomer}>
+                <Text style={styles.newCustomerBtnText}>+ New</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={styles.phoneModalClose}
                 onPress={() => setShowPhoneDropdown(false)}>
                 <Text style={styles.phoneModalCloseText}>✕</Text>
@@ -590,6 +660,14 @@ const InvoiceForm = ({
                   <View style={styles.noResults}>
                     <Text style={styles.noResultsIcon}>🔍</Text>
                     <Text style={styles.noResultsText}>No customers found</Text>
+
+                    <TouchableOpacity
+                      style={styles.newCustomerCta}
+                      onPress={openNewCustomer}>
+                      <Text style={styles.newCustomerCtaText}>
+                        + Add a new customer
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 }
                 renderItem={({item}) => (
@@ -632,6 +710,92 @@ const InvoiceForm = ({
                 )}
               />
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add Customer — same fields as the web CRM's Add Customer dialog */}
+      <Modal
+        visible={showNewCustomer}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowNewCustomer(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.phoneModal}>
+            <View style={styles.phoneModalHeader}>
+              <Text style={styles.phoneModalTitle}>Add Customer</Text>
+              <TouchableOpacity
+                style={styles.phoneModalClose}
+                onPress={() => setShowNewCustomer(false)}>
+                <Text style={styles.phoneModalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.newCustomerBody}>
+              <Text style={styles.newCustomerLabel}>Customer Name *</Text>
+              <TextInput
+                style={styles.newCustomerInput}
+                placeholder="Full name"
+                placeholderTextColor={C.textSecondary}
+                value={newCustomer.customer_name}
+                onChangeText={v =>
+                  setNewCustomer(prev => ({...prev, customer_name: v}))
+                }
+              />
+
+              <Text style={styles.newCustomerLabel}>Customer Mobile *</Text>
+              <TextInput
+                style={styles.newCustomerInput}
+                placeholder="07XXXXXXXX"
+                placeholderTextColor={C.textSecondary}
+                keyboardType="phone-pad"
+                value={newCustomer.phone}
+                onChangeText={v => setNewCustomer(prev => ({...prev, phone: v}))}
+              />
+
+              <Text style={styles.newCustomerLabel}>Mobile Secondary</Text>
+              <TextInput
+                style={styles.newCustomerInput}
+                placeholder="Optional"
+                placeholderTextColor={C.textSecondary}
+                keyboardType="phone-pad"
+                value={newCustomer.phone_second}
+                onChangeText={v =>
+                  setNewCustomer(prev => ({...prev, phone_second: v}))
+                }
+              />
+
+              <Text style={styles.newCustomerLabel}>Customer Address *</Text>
+              <TextInput
+                style={[styles.newCustomerInput, styles.newCustomerInputTall]}
+                placeholder="Delivery address"
+                placeholderTextColor={C.textSecondary}
+                multiline
+                value={newCustomer.address}
+                onChangeText={v =>
+                  setNewCustomer(prev => ({...prev, address: v}))
+                }
+              />
+
+              <Text style={styles.newCustomerHint}>
+                The customer ID is generated automatically, the same way the web
+                CRM does it.
+              </Text>
+
+              <TouchableOpacity
+                style={[
+                  styles.newCustomerSave,
+                  savingCustomer && styles.newCustomerSaveOff,
+                ]}
+                onPress={saveNewCustomer}
+                disabled={savingCustomer}>
+                {savingCustomer ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.newCustomerSaveText}>Add customer</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>

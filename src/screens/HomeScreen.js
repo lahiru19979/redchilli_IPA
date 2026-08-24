@@ -10,7 +10,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { invoiceAPI } from '../api/apiClient';
+import { useFocusEffect } from '@react-navigation/native';
+import { invoiceAPI, whatsappAPI } from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { C } from '../utils/theme';
@@ -164,6 +165,34 @@ console.log('Can access Invoice module:', hasPermission('Invoice module'));
     setRefreshing(false);
   }, []);
 
+  // Unread WhatsApp messages, shown as a badge on that tile.
+  const [waUnread, setWaUnread] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+
+      const poll = () => {
+        whatsappAPI
+          .getUnread()
+          .then(res => {
+            // The screen can be left mid-request; setting state afterwards
+            // warns and, worse, shows a count for a screen nobody is on.
+            if (alive) setWaUnread(Number(res.data?.total) || 0);
+          })
+          .catch(() => {});
+      };
+
+      poll();
+      const timer = setInterval(poll, 15000);
+
+      return () => {
+        alive = false;
+        clearInterval(timer);
+      };
+    }, []),
+  );
+
   // Filter action cards based on permissions
   const visibleActionCards = ACTION_CARDS.filter(card => {
     if (!card.permission) return true;
@@ -191,13 +220,24 @@ console.log('Can access Invoice module:', hasPermission('Invoice module'));
   );
 
   // Action Card Component
-  const ActionCard = ({ icon, title, subtitle, color, onPress }) => (
+  const ActionCard = ({ icon, title, subtitle, color, badge, onPress }) => (
     <TouchableOpacity
       style={[styles.actionCard, { borderLeftColor: color }]}
       onPress={onPress}
       activeOpacity={0.8}
     >
-      <Text style={styles.actionIcon}>{icon}</Text>
+      <View style={styles.actionIconWrap}>
+        <Text style={styles.actionIcon}>{icon}</Text>
+
+        {badge > 0 && (
+          <View style={styles.actionBadge}>
+            <Text style={styles.actionBadgeText}>
+              {badge > 99 ? '99+' : badge}
+            </Text>
+          </View>
+        )}
+      </View>
+
       <View style={styles.actionContent}>
         <Text style={styles.actionTitle}>{title}</Text>
         <Text style={styles.actionSubtitle}>{subtitle}</Text>
@@ -258,6 +298,7 @@ console.log('Can access Invoice module:', hasPermission('Invoice module'));
                 title={card.title}
                 subtitle={card.subtitle}
                 color={card.color}
+                badge={card.id === 'whatsapp' ? waUnread : 0}
                 onPress={() => navigation.navigate(card.screen)}
               />
             ))}
@@ -282,6 +323,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: C.bg,
+  },
+
+  actionBadge: {
+    position: 'absolute',
+    // Anchored to the glyph itself, overlapping its top-right corner the way a
+    // phone's app badge does. These cards are only 48% wide, so a badge that
+    // sits any further out runs into the title beside it.
+    top: -4,
+    right: -8,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: '#E53E3E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // A ring in the card's colour, so the badge reads as sitting on top of it.
+    borderWidth: 2,
+    borderColor: C.surface,
+  },
+  actionBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
+    lineHeight: 13,
+    textAlign: 'center',
   },
 
   // Header Styles
@@ -385,9 +452,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  actionIconWrap: {
+    marginRight: 10,
+  },
   actionIcon: {
     fontSize: 26,
-    marginRight: 10,
   },
   actionContent: {
     flex: 1,

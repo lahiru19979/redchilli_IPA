@@ -1,9 +1,32 @@
-import React from 'react';
-import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
-import {getStatusInfo,formatDate} from '../utils/helpers';
+import React, {useState} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
+import {getStatusInfo, formatDate} from '../utils/helpers';
+import {downloadInvoicePdf, sendInvoiceViaCrm} from '../utils/whatsapp';
 
 const InvoiceCard = ({invoice, onPress}) => {
   const statusInfo = getStatusInfo(invoice.status_label);
+
+  // Rendering the PDF takes a moment on the server, so each action shows its
+  // own spinner rather than freezing the whole list.
+  const [busy, setBusy] = useState(null); // 'download' | 'share' | null
+
+  const run = async (kind, task) => {
+    if (busy) return;
+
+    setBusy(kind);
+
+    try {
+      await task();
+    } finally {
+      setBusy(null);
+    }
+  };
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
@@ -31,6 +54,39 @@ const InvoiceCard = ({invoice, onPress}) => {
       <View style={styles.footer}>
         <Text style={styles.typeLabel}>{invoice.type?.replace('_', ' ')}</Text>
         <Text style={styles.amount}>Rs. {invoice.grand_total}</Text>
+      </View>
+
+      {/* Same two actions the web invoice list offers on each row. */}
+      <View style={styles.actions}>
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.downloadBtn]}
+          onPress={() => run('download', () => downloadInvoicePdf({id: invoice.id}))}
+          disabled={!!busy}>
+          {busy === 'download' ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.actionText}>⤓  Download</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.shareBtn]}
+          onPress={() =>
+            run('share', () =>
+              sendInvoiceViaCrm({
+                id: invoice.id,
+                invNo: invoice.inv_no,
+                phone: invoice.phone,
+              }),
+            )
+          }
+          disabled={!!busy}>
+          {busy === 'share' ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.actionText}>Send WhatsApp</Text>
+          )}
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -113,6 +169,21 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2E7D32',
   },
+  actions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  actionBtn: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  downloadBtn: {backgroundColor: '#E53E3E'},
+  shareBtn: {backgroundColor: '#25D366'},
+  actionText: {color: '#fff', fontWeight: '700', fontSize: 12.5},
 });
 
 export default InvoiceCard;

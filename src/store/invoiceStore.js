@@ -56,7 +56,10 @@ const invoiceStore = {
       invoiceItems[existingIndex].quantity += 1;
       console.log('🛒 Store: Incremented quantity');
     } else {
-      invoiceItems.push({
+      // unshift, not push: the newest line goes to the top of the list, so the
+      // product just scanned or tapped is the one on screen rather than being
+      // pushed below everything already added.
+      invoiceItems.unshift({
         id: Date.now(), // Unique ID for this specific row
         product: product,
         quantity: 1,

@@ -84,7 +84,7 @@ const WhatsAppChatsScreen = ({ navigation }) => {
           style={styles.headerBtn}
           onPress={() => setNewChatOpen(true)}
         >
-          <Text style={styles.headerBtnText}>New</Text>
+          <Text style={styles.headerBtnText}>✚  New chat</Text>
         </TouchableOpacity>
       ),
     });
@@ -752,7 +752,16 @@ const styles = StyleSheet.create({
   labelChip: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 },
   labelText: { color: '#fff', fontSize: 10, fontWeight: '600' },
   empty: { textAlign: 'center', color: C.textSecondary, marginTop: 40 },
-  headerBtn: { paddingHorizontal: 12, paddingVertical: 6 },
+  headerBtn: {
+    marginRight: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    // The navigation header is blue with a white tint, so a pill of translucent
+    // white is what makes this read as a button. C.accent — the old colour — was
+    // dark blue on blue and all but disappeared.
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
   viewTabs: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -862,7 +871,7 @@ const styles = StyleSheet.create({
     backgroundColor: C.divider,
     marginVertical: 6,
   },
-  headerBtnText: { color: C.accent, fontWeight: '700', fontSize: 15 },
+  headerBtnText: { color: '#fff', fontWeight: '700', fontSize: 13.5 },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',

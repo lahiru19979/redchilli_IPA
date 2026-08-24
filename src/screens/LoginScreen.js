@@ -119,6 +119,8 @@ const styles = StyleSheet.create({
   logoImage: {
     width: 110,
     height: 110,
+    // Half the width, so the logo reads as a circle rather than a square badge.
+    borderRadius: 55,
     marginBottom: 16,
   },
   title: {

@@ -3,17 +3,10 @@ import {View, Text, ActivityIndicator, Alert, StyleSheet} from 'react-native';
 import {invoiceAPI, productAPI} from '../api/apiClient';
 import invoiceStore from '../store/invoiceStore';
 import {C} from '../utils/theme';
-import {shareInvoiceOnWhatsApp} from '../utils/whatsapp';
+import {sendInvoiceViaCrm} from '../utils/whatsapp';
 import InvoiceForm from './invoice/InvoiceForm';
 import {reconstructEditItems} from './invoice/invoiceHelpers';
 import {useInvoiceSession} from './invoice/useInvoiceSession';
-
-// Matches the "1,700.00" formatting used everywhere else in the invoice UI.
-const money = value =>
-  Number(value || 0).toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 
 const EditInvoiceScreen = ({navigation, route}) => {
   const invoice = route.params.invoice;
@@ -98,11 +91,12 @@ const EditInvoiceScreen = ({navigation, route}) => {
           {
             text: 'Send on WhatsApp',
             onPress: async () => {
-              await shareInvoiceOnWhatsApp({
+              // Already confirmed by the dialog this button belongs to.
+              await sendInvoiceViaCrm({
                 id: invoice.id,
                 invNo: invoice.inv_no,
                 phone: invoiceData.phone,
-                total: money(invoiceData.grand_total),
+                confirm: false,
               });
               navigation.goBack();
             },

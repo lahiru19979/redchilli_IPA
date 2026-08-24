@@ -84,6 +84,14 @@ export const invoiceAPI = {
 
   getMaxInvoiceNo: () => apiClient.get('/max_inv_no'),
   getShareablePdfUrl: id => apiClient.get(`/generate_share_invoice/${id}`),
+
+  // Sends the invoice PDF to the customer through the WhatsApp CRM, from the
+  // business number — not a whatsapp:// link on the agent's own phone.
+  sendViaWhatsAppCrm: id =>
+    apiClient.post(`/invoices/${id}/send-whatsapp`, {}, {
+      // Rendering the PDF and uploading it to Meta both take time.
+      timeout: 120000,
+    }),
 };
 
 export const productAPI = {
@@ -206,6 +214,10 @@ export const customerAPI = {
 
   // Search customers
   search: query => apiClient.get(`/cusname?search=${query}`),
+
+  // Add a customer without leaving the invoice screen, the way the web CRM's
+  // Add Customer dialog does.
+  create: data => apiClient.post('/customers', data),
 };
 
 // WhatsApp CRM — mirrors the web inbox, sharing the same backend service.
