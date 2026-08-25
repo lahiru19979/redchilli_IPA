@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {productAPI, customerAPI} from '../../api/apiClient';
 import ProductItem from '../../components/ProductItem';
 import {getColorName, getColorByID} from '../../utils/colors';
@@ -54,6 +55,10 @@ const InvoiceForm = ({
   busyLabel,
   onSubmit,
 }) => {
+  // How much of the bottom edge the system reserves — 0 with gesture navigation,
+  // roughly 48dp where the three-button bar is on.
+  const insets = useSafeAreaInsets();
+
   const [items, setItems] = useState(() => invoiceStore.getItems());
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerType, setCustomerType] = useState('');
@@ -585,7 +590,7 @@ const InvoiceForm = ({
       </ScrollView>
 
       {/* Bottom Section */}
-      <View style={styles.bottomSection}>
+      <View style={[styles.bottomSection, {paddingBottom: insets.bottom + 16}]}>
         <View style={styles.totalRow}>
           <View>
             <Text style={styles.totalLabel}>Total Amount</Text>

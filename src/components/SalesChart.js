@@ -9,6 +9,12 @@ const SalesChart = ({
   highColor = '#28a745',     // Highest value color
   lowColor = '#dc3545',      // Lowest value color
 }) => {
+  // Newest bar on the left. The series arrives oldest-first — which is what the
+  // totals and the Recent list rely on — so the flip happens here, at the point
+  // of drawing, rather than by reordering the data everything else reads.
+  const labels = [...(data?.labels || [])].reverse();
+  const values = [...(data?.values || [])].reverse();
+
   if (!data || !data.labels || !data.values) {
     return (
       <View style={styles.emptyContainer}>
@@ -80,7 +86,7 @@ const SalesChart = ({
         bounces={false}
       >
         <View style={styles.chartArea}>
-          {data.values.map((value, index) => {
+          {values.map((value, index) => {
             const numValue = parseFloat(value || 0);
             const barHeight = maxValue > 0 
               ? Math.max((numValue / maxValue) * CHART_HEIGHT, 8) 
@@ -89,7 +95,7 @@ const SalesChart = ({
             const isLowest = numValue === minSales && numValue > 0;
             const isZero = numValue === 0;
 
-            const label = data.labels[index] || '';
+            const label = labels[index] || '';
             const dayLabel = label.split(' ')[1] || label;
             const monthLabel = label.split(' ')[0] || '';
 
@@ -150,10 +156,10 @@ const SalesChart = ({
       {/* Period Info */}
       <View style={styles.periodContainer}>
         <Text style={styles.periodLabel}>
-          📅 {data.labels[0]} → {data.labels[data.labels.length - 1]}
+          📅 {labels[labels.length - 1]} → {labels[0]}
         </Text>
         <Text style={styles.periodCount}>
-          {data.labels.length} days
+          {labels.length} periods
         </Text>
       </View>
     </View>

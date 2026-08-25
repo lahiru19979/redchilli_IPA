@@ -13,6 +13,7 @@ import SalesChart from '../components/SalesChart';
 import MonthlyRevenueChart from '../components/MonthlyRevenueChart';
 import NotClosedInvoicesChart from '../components/NotClosedInvoicesChart';
 import HeatpressRevenueChart from '../components/HeatpressRevenueChart';
+import RevenuePeriodFilter, { filterValue } from '../components/RevenuePeriodFilter';
 import { C } from '../utils/theme';
 
 const TABS = [
@@ -26,6 +27,18 @@ const TABS = [
 
 const RevDashboardScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('daily');
+
+  // Period selection per tab. Kept separate so switching tabs does not silently
+  // change the range you were looking at on the other one.
+  const [dailyFilter, setDailyFilter] = useState('30d');
+  const [dtfFilter, setDtfFilter] = useState('30d');
+  const [degsignFilter, setDegsignFilter] = useState('30d');
+
+  // Series reported upward by the three self-contained chart components, so the
+  // Sales Overview at the foot of the page can total whichever tab is open.
+  const [monthlyData, setMonthlyData] = useState(null);
+  const [notClosedData, setNotClosedData] = useState(null);
+  const [heatpressData, setHeatpressData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
   // Daily Sales Data
@@ -49,7 +62,7 @@ const RevDashboardScreen = ({ navigation }) => {
       if (!refresh) setLoading(true);
       setError(null);
 
-      const response = await revAPI.getdailysales();
+      const response = await revAPI.getdailysales(filterValue(dailyFilter));
       console.log('📊 Dashboard Response:', response.data);
 
       // Handle different response structures
@@ -76,7 +89,7 @@ const RevDashboardScreen = ({ navigation }) => {
       setDtfLoading(true);
       setDtfError(null);
 
-      const response = await revAPI.getDtfRevenue();
+      const response = await revAPI.getDtfRevenue(filterValue(dtfFilter));
       console.log(
         '🎨 DTF Revenue Response:',
         JSON.stringify(response.data, null, 2),
@@ -116,7 +129,7 @@ const RevDashboardScreen = ({ navigation }) => {
     try {
       setDegsignLoading(true);
       setDegsignError(null);
-      const response = await revAPI.getDegsignRevenue();
+      const response = await revAPI.getDegsignRevenue(filterValue(degsignFilter));
       console.log(
         '🎨 Degsign Revenue Response:',
         JSON.stringify(response.data, null, 2),
@@ -154,9 +167,18 @@ const RevDashboardScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dailyFilter]);
+
+  useEffect(() => {
     fetchDtfData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dtfFilter]);
+
+  useEffect(() => {
     fetchDegsignData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [degsignFilter]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -165,7 +187,8 @@ const RevDashboardScreen = ({ navigation }) => {
       fetchDegsignData();
     });
     return unsubscribe;
-  }, [navigation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, dailyFilter, dtfFilter, degsignFilter]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -176,20 +199,52 @@ const RevDashboardScreen = ({ navigation }) => {
     ]).finally(() => {
       setRefreshing(false);
     });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dailyFilter, dtfFilter, degsignFilter]);
 
-  // Calculate totals for daily chart
-  const totalSales =
-    chartData?.values?.reduce((sum, val) => sum + parseFloat(val || 0), 0) || 0;
+  // Which series the Sales Overview should summarise, and how to label it.
+  // 'Not Closed Invoices' is a count of invoices, not money, so it skips the
+  // Rs. prefix the revenue tabs use.
+  const OVERVIEW = {
+    daily: {data: chartData, label: 'Total Sales', icon: '💰', money: true, recent: 'Recent Sales'},
+    dtf: {data: dtfData, label: 'Total DTF', icon: '🎨', money: true, recent: 'Recent DTF Sales'},
+    degsign: {data: degsignData, label: 'Total Degsign', icon: '📋', money: true, recent: 'Recent Degsign Sales'},
+    monthly: {data: monthlyData, label: 'Total RC Revenue', icon: '📈', money: true, recent: 'Recent RC Revenue'},
+    notclosed: {data: notClosedData, label: 'Not Closed', icon: '⏳', money: false, recent: 'Recent Not Closed'},
+    heatpress: {data: heatpressData, label: 'Total Heatpress', icon: '🔥', money: true, recent: 'Recent Heatpress'},
+  };
 
-  // Calculate totals for DTF chart
-  const totalDtfSales =
-    dtfData?.values?.reduce((sum, val) => sum + parseFloat(val || 0), 0) || 0;
+  const overview = (() => {
+    const config = OVERVIEW[activeTab] || OVERVIEW.daily;
+    const {data, label, icon, money} = config;
 
-  // Calculate totals for Degsign chart
-  const totalDegsignSales =
-    degsignData?.values?.reduce((sum, val) => sum + parseFloat(val || 0), 0) ||
-    0;
+    const labels = data?.labels || [];
+    const values = (data?.values || []).map(v => parseFloat(v || 0));
+    const total = values.reduce((sum, v) => sum + v, 0);
+    const average = values.length ? total / values.length : 0;
+
+    // The five most recent points, newest first, each flagged against the
+    // period's own average — which is what colours the figure green.
+    const recent = labels
+      .slice(-5)
+      .reverse()
+      .map((rowLabel, index) => {
+        const value = values[labels.length - 1 - index] || 0;
+        return {label: rowLabel, value: Math.round(value), isHigh: value > average};
+      });
+
+    return {
+      label,
+      icon,
+      money,
+      recentTitle: config.recent,
+      recent,
+      total: Math.round(total),
+      periods: labels.length,
+      // Math.max() of nothing is -Infinity, which would print on an empty tab.
+      best: values.length ? Math.round(Math.max(...values)) : 0,
+    };
+  })();
 
   // Render error state
   const renderError = (message, onRetry) => (
@@ -221,118 +276,8 @@ const RevDashboardScreen = ({ navigation }) => {
         />
       }
     >
-      {/* Subtitle */}
-      <Text style={styles.dashboardIntro}>Sales Overview</Text>
-
-      {/* Quick Stats Cards - Only show on Daily tab */}
-      {activeTab === 'daily' && (
-        <View style={styles.quickStatsContainer}>
-          <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
-            <Text style={styles.quickStatIcon}>💰</Text>
-            <Text style={styles.quickStatValue}>
-              Rs. {totalSales.toLocaleString()}
-            </Text>
-            <Text style={styles.quickStatLabel}>Total Sales</Text>
-          </View>
-
-          <View style={[styles.quickStatCard, { backgroundColor: C.successLight }]}>
-            <Text style={styles.quickStatIcon}>📊</Text>
-            <Text style={styles.quickStatValue}>
-              {chartData?.labels?.length || 0}
-            </Text>
-            <Text style={styles.quickStatLabel}>Days Active</Text>
-          </View>
-
-          <View style={[styles.quickStatCard, { backgroundColor: C.warningLight }]}>
-            <Text style={styles.quickStatIcon}>📈</Text>
-            <Text style={styles.quickStatValue}>
-              Rs.{' '}
-              {chartData?.values
-                ? Math.max(
-                    ...chartData.values.map(v => parseFloat(v || 0)),
-                  ).toLocaleString()
-                : 0}
-            </Text>
-            <Text style={styles.quickStatLabel}>Best Day</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Quick Stats Cards - Only show on DTF tab */}
-      {activeTab === 'dtf' && (
-        <View style={styles.quickStatsContainer}>
-          <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
-            <Text style={styles.quickStatIcon}>🎨</Text>
-            <Text style={styles.quickStatValue}>
-              Rs. {totalDtfSales.toLocaleString()}
-            </Text>
-            <Text style={styles.quickStatLabel}>Total DTF</Text>
-          </View>
-
-          <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
-            <Text style={styles.quickStatIcon}>📊</Text>
-            <Text style={styles.quickStatValue}>
-              {dtfData?.labels?.length || 0}
-            </Text>
-            <Text style={styles.quickStatLabel}>Days Active</Text>
-          </View>
-
-          <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
-            <Text style={styles.quickStatIcon}>📈</Text>
-            <Text style={styles.quickStatValue}>
-              Rs.{' '}
-              {dtfData?.values
-                ? Math.max(
-                    ...dtfData.values.map(v => parseFloat(v || 0)),
-                  ).toLocaleString()
-                : 0}
-            </Text>
-            <Text style={styles.quickStatLabel}>Best Day</Text>
-          </View>
-        </View>
-      )}
-
-      {activeTab === 'degsign' && (
-        <View style={styles.quickStatsContainer}>
-          <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
-            <Text style={styles.quickStatIcon}>🎨</Text>
-            <Text style={styles.quickStatValue}>
-              Rs. {totalDegsignSales.toLocaleString()}
-            </Text>
-            <Text style={styles.quickStatLabel}>Total Degsign</Text>
-          </View>
-
-          <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
-            <Text style={styles.quickStatIcon}>📊</Text>
-            <Text style={styles.quickStatValue}>
-              {degsignData?.labels?.length || 0}
-            </Text>
-            <Text style={styles.quickStatLabel}>Days Active</Text>
-          </View>
-
-          <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
-            <Text style={styles.quickStatIcon}>📈</Text>
-            <Text style={styles.quickStatValue}>
-              Rs.{' '}
-              {degsignData?.values
-                ? Math.max(
-                    ...degsignData.values.map(v => parseFloat(v || 0)),
-                  ).toLocaleString()
-                : 0}
-            </Text>
-            <Text style={styles.quickStatLabel}>Best Day</Text>
-          </View>
-        </View>
-      )}
-
       {/* Tab Switcher */}
-      <View
-        style={[
-          styles.tabContainer,
-          (activeTab === 'monthly' || activeTab === 'notclosed' || activeTab === 'heatpress') &&
-            styles.tabContainerMonthly,
-        ]}
-      >
+      <View style={styles.tabContainer}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -360,6 +305,8 @@ const RevDashboardScreen = ({ navigation }) => {
       {/* ===================== DAILY TAB ===================== */}
       {activeTab === 'daily' && (
         <>
+          <RevenuePeriodFilter active={dailyFilter} onChange={setDailyFilter} />
+
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={C.accent} />
@@ -380,35 +327,6 @@ const RevDashboardScreen = ({ navigation }) => {
                 highColor="#28a745"
                 lowColor="#dc3545"
               />
-
-              {/* Recent Sales List */}
-              <View style={styles.recentSection}>
-                <Text style={styles.recentTitle}>Recent Sales</Text>
-                {chartData?.labels
-                  ?.slice(-5)
-                  .reverse()
-                  .map((label, index) => {
-                    const valueIndex = chartData.labels.length - 1 - index;
-                    const value = parseFloat(chartData.values[valueIndex] || 0);
-                    const isHigh = value > totalSales / chartData.values.length;
-
-                    return (
-                      <View key={index} style={styles.recentItem}>
-                        <View style={styles.recentLeft}>
-                          <Text style={styles.recentDateText}>{label}</Text>
-                        </View>
-                        <Text
-                          style={[
-                            styles.recentValue,
-                            { color: isHigh ? '#28a745' : '#666' },
-                          ]}
-                        >
-                          Rs. {value.toLocaleString()}
-                        </Text>
-                      </View>
-                    );
-                  })}
-              </View>
             </>
           )}
         </>
@@ -417,6 +335,8 @@ const RevDashboardScreen = ({ navigation }) => {
       {/* ===================== DTF TAB ===================== */}
       {activeTab === 'dtf' && (
         <>
+          <RevenuePeriodFilter active={dtfFilter} onChange={setDtfFilter} />
+
           {dtfLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={C.accent} />
@@ -435,36 +355,6 @@ const RevDashboardScreen = ({ navigation }) => {
                 highColor="#4CAF50"
                 lowColor="#FF5722"
               />
-
-              {/* Recent DTF Sales List */}
-              <View style={styles.recentSection}>
-                <Text style={styles.recentTitle}>Recent DTF Sales</Text>
-                {dtfData?.labels
-                  ?.slice(-5)
-                  .reverse()
-                  .map((label, index) => {
-                    const valueIndex = dtfData.labels.length - 1 - index;
-                    const value = parseFloat(dtfData.values[valueIndex] || 0);
-                    const isHigh =
-                      value > totalDtfSales / dtfData.values.length;
-
-                    return (
-                      <View key={index} style={styles.recentItem}>
-                        <View style={styles.recentLeft}>
-                          <Text style={styles.recentDateText}>{label}</Text>
-                        </View>
-                        <Text
-                          style={[
-                            styles.recentValue,
-                            { color: isHigh ? '#9C27B0' : '#666' },
-                          ]}
-                        >
-                          Rs. {value.toLocaleString()}
-                        </Text>
-                      </View>
-                    );
-                  })}
-              </View>
             </>
           )}
         </>
@@ -472,6 +362,8 @@ const RevDashboardScreen = ({ navigation }) => {
 
       {activeTab === 'degsign' && (
         <>
+          <RevenuePeriodFilter active={degsignFilter} onChange={setDegsignFilter} />
+
           {degsignLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={C.accent} />
@@ -492,38 +384,6 @@ const RevDashboardScreen = ({ navigation }) => {
                 highColor="#4CAF50"
                 lowColor="#FF5722"
               />
-
-              {/* Recent Degsign Sales List */}
-              <View style={styles.recentSection}>
-                <Text style={styles.recentTitle}>Recent Degsign Sales</Text>
-                {degsignData?.labels
-                  ?.slice(-5)
-                  .reverse()
-                  .map((label, index) => {
-                    const valueIndex = degsignData.labels.length - 1 - index;
-                    const value = parseFloat(
-                      degsignData.values[valueIndex] || 0,
-                    );
-                    const isHigh =
-                      value > totalDtfSales / degsignData.values.length;
-
-                    return (
-                      <View key={index} style={styles.recentItem}>
-                        <View style={styles.recentLeft}>
-                          <Text style={styles.recentDateText}>{label}</Text>
-                        </View>
-                        <Text
-                          style={[
-                            styles.recentValue,
-                            { color: isHigh ? '#9C27B0' : '#666' },
-                          ]}
-                        >
-                          Rs. {value.toLocaleString()}
-                        </Text>
-                      </View>
-                    );
-                  })}
-              </View>
             </>
           )}
         </>
@@ -531,15 +391,79 @@ const RevDashboardScreen = ({ navigation }) => {
 
       {/* ===================== MONTHLY TAB ===================== */}
       {activeTab === 'monthly' && (
-        <MonthlyRevenueChart title="Monthly Revenue" />
+        <MonthlyRevenueChart title="Monthly Revenue" onData={setMonthlyData} />
       )}
 
       {activeTab === 'notclosed' && (
-        <NotClosedInvoicesChart title="Not Closed Invoices" />
+        <NotClosedInvoicesChart
+          title="Not Closed Invoices"
+          onData={setNotClosedData}
+        />
       )}
       {activeTab === 'heatpress' && ( 
-        <HeatpressRevenueChart title="Heatpress Revenue" />
+        <HeatpressRevenueChart
+          title="Heatpress Revenue"
+          onData={setHeatpressData}
+        />
       )}
+
+      {/* ===================== RECENT ===================== */}
+      {/* Was three copies, one per inline tab, and absent from the other three.
+          Driven by the same series the Sales Overview totals, so every tab now
+          reads the same way. */}
+      {overview.periods > 0 && (
+        <View style={styles.recentSection}>
+          <Text style={styles.recentTitle}>{overview.recentTitle}</Text>
+
+          {overview.recent.map((row, index) => (
+            <View key={index} style={styles.recentItem}>
+              <View style={styles.recentLeft}>
+                <Text style={styles.recentDateText}>{row.label}</Text>
+              </View>
+
+              <Text
+                style={[
+                  styles.recentValue,
+                  // eslint-disable-next-line react-native/no-inline-styles
+                  { color: row.isHigh ? '#28a745' : '#666' },
+                ]}
+              >
+                {overview.money
+                  ? `Rs. ${row.value.toLocaleString()}`
+                  : row.value.toLocaleString()}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* ===================== SALES OVERVIEW ===================== */}
+      {/* One block for every tab, fed by whichever series is on screen. */}
+      <Text style={styles.dashboardIntro}>Sales Overview</Text>
+
+      <View style={styles.quickStatsContainer}>
+        <View style={[styles.quickStatCard, { backgroundColor: C.accentLight }]}>
+          <Text style={styles.quickStatIcon}>{overview.icon}</Text>
+          <Text style={styles.quickStatValue}>
+            {overview.money ? `Rs. ${overview.total.toLocaleString()}` : overview.total.toLocaleString()}
+          </Text>
+          <Text style={styles.quickStatLabel}>{overview.label}</Text>
+        </View>
+
+        <View style={[styles.quickStatCard, { backgroundColor: C.successLight }]}>
+          <Text style={styles.quickStatIcon}>📊</Text>
+          <Text style={styles.quickStatValue}>{overview.periods}</Text>
+          <Text style={styles.quickStatLabel}>Periods</Text>
+        </View>
+
+        <View style={[styles.quickStatCard, { backgroundColor: C.warningLight }]}>
+          <Text style={styles.quickStatIcon}>📈</Text>
+          <Text style={styles.quickStatValue}>
+            {overview.money ? `Rs. ${overview.best.toLocaleString()}` : overview.best.toLocaleString()}
+          </Text>
+          <Text style={styles.quickStatLabel}>Best Period</Text>
+        </View>
+      </View>
 
       <View style={styles.bottomPadding} />
     </ScrollView>
@@ -600,14 +524,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 4,
   },
-  tabContainerMonthly: {
-    marginTop: -10,
-  },
   tabScrollContent: {
     flexDirection: 'row',
   },
   tab: {
-    flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: 'center',

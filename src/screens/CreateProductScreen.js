@@ -17,6 +17,7 @@ import { productAPI } from '../api/apiClient';
 import ImagePicker from 'react-native-image-crop-picker';
 import { Alert, Platform } from 'react-native';
 import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C } from '../utils/theme';
 
 const MOCK_ORIGINS = [
@@ -86,6 +87,9 @@ const Selector = ({ value, placeholder, onPress, disabled }) => (
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 const CreateProductScreen = ({ navigation, route }) => {
+  // How much of the bottom edge the system reserves — 0 on a phone with gesture
+  // navigation, roughly 48dp where the three-button bar is on.
+  const insets = useSafeAreaInsets();
   // Edit mode — a product passed via navigation means we are editing it.
   const editProductParam = route?.params?.product || null;
   const editId = editProductParam?.id || null;
@@ -1793,11 +1797,11 @@ const CreateProductScreen = ({ navigation, route }) => {
           ))}
         </View>
 
-        <View style={{ height: 110 }} />
+        <View style={{ height: 110 + insets.bottom }} />
       </ScrollView>
 
       {/* ── Bottom Bar ── */}
-      <View style={s.bottomBar}>
+      <View style={[s.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         <TouchableOpacity
           style={s.cancelBtn}
           activeOpacity={0.7}
@@ -2358,7 +2362,9 @@ const s = StyleSheet.create({
     backgroundColor: C.surface,
     flexDirection: 'row',
     padding: 16,
-    paddingBottom: 32,
+    // Overridden at runtime with the device's real inset; this is the floor for
+    // a phone that reports none.
+    paddingBottom: 16,
     gap: 12,
     borderTopWidth: 1.5,
     borderTopColor: C.border,

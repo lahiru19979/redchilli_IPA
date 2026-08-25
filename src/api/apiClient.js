@@ -31,23 +31,80 @@ apiClient.interceptors.request.use(
   },
 );
 
+// Somewhere to tell the app the session died. Clearing storage on its own left
+// the user staring at "unavailable (HTTP 401)" on every screen, with no way back
+// except quitting or logging out by hand.
+let onUnauthorized = null;
+
+export const setUnauthorizedHandler = handler => {
+  onUnauthorized = handler;
+};
+
+// One in-flight session check, shared by every 401 that arrives while it runs.
+let sessionCheck = null;
+
+/**
+ * Ask the server whether this token is still good.
+ *
+ * /auth/check sits behind auth:sanctum and answers 200 for a live token, so it
+ * is the one endpoint that can tell "the session died" apart from "that one
+ * request was refused". Marked skipAuthRecovery so its own failure cannot
+ * re-enter this interceptor.
+ */
+const sessionIsDead = () => {
+  if (!sessionCheck) {
+    sessionCheck = apiClient
+      .get('/auth/check', {skipAuthRecovery: true})
+      .then(() => false)
+      // Only an explicit 401 means the token is finished. A timeout or a 500
+      // must not sign anyone out — that is what made the app ask for a login
+      // every time it came back from the background.
+      .catch(error => error.response?.status === 401)
+      .finally(() => {
+        sessionCheck = null;
+      });
+  }
+
+  return sessionCheck;
+};
+
 // Response interceptor for error handling
 apiClient.interceptors.response.use(
   response => response,
-  error => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized - clear storage and redirect to login
-      storage.clear();
+  async error => {
+    const status = error.response?.status;
+
+    if (status !== 401 || error.config?.skipAuthRecovery) {
+      return Promise.reject(error);
     }
+
+    // Capture the promise before the .finally above clears the shared slot.
+    const check = sessionIsDead();
+
+    if (await check) {
+      // Remove only the auth keys. storage.clear() wiped everything the app had
+      // cached, which is far more than signing out needs to do.
+      await storage.remove(StorageKeys.TOKEN);
+      await storage.remove(StorageKeys.USER);
+      await storage.remove(StorageKeys.PERMISSIONS);
+
+      if (onUnauthorized) {
+        onUnauthorized();
+      }
+    }
+
     return Promise.reject(error);
   },
 );
 
 // API Functions
 export const authAPI = {
-  login: (email, password) => apiClient.post('/auth', { email, password }),
+  // skipAuthRecovery: a 401 from these two means bad credentials or a session
+  // already being ended — neither is a reason to run the session probe.
+  login: (email, password) =>
+    apiClient.post('/auth', {email, password}, {skipAuthRecovery: true}),
 
-  logout: () => apiClient.post('/logout'),
+  logout: () => apiClient.post('/logout', {}, {skipAuthRecovery: true}),
 
   getProfile: () => apiClient.get('/profile'),
 
@@ -123,15 +180,47 @@ export const inventoryAPI = {
   saveInventory: data => apiClient.post('/save_inventory', data),
   getAll: (page = 1) => apiClient.get(`/inventories?page=${page}`),
   getById: id => apiClient.get(`/inventories/${id}`),
+
+  // The other three inventory modules the web CRM has.
+  getAvailable: (page = 1, searchKey = '', inventoryStatus = '', productSource = '') =>
+    apiClient.get('/inventory/available', {
+      params: {page, searchKey, inventoryStatus, productSource},
+    }),
+
+  getHistory: (page = 1, searchKey = '') =>
+    apiClient.get('/inventory/history', {params: {page, searchKey}}),
+
+  getBarcodes: (page = 1, params = {}) =>
+    apiClient.get('/inventory/barcodes', {params: {page, ...params}}),
+
+  // Stock movements. Both need the update_inventory permission and write the
+  // same history row the web CRM does.
+  stockIn: (productVariantId, quantity) =>
+    apiClient.post('/inventory/stock-in', {
+      product_variant_id: productVariantId,
+      quantity,
+    }),
+
+  stockOut: (productVariantId, quantity, reason) =>
+    apiClient.post('/inventory/stock-out', {
+      product_variant_id: productVariantId,
+      quantity,
+      reason,
+    }),
 };
 
 export const revAPI = {
-  getdailysales: () => apiClient.get('/daily-revenue'),
+  // Every revenue endpoint now takes the same searchKey the RC tab used, so all
+  // six tabs offer the 30d / 3m / 6m / 1y / 5y periods.
+  getdailysales: (filter = '30d') =>
+    apiClient.get(`/daily-revenue?searchKey=${filter}`),
   getRCRevenue: filter => apiClient.get(`/monthly-revenue?searchKey=${filter}`),
-  getDtfRevenue: () => apiClient.get(`/daily-revenue-dtf`),
+  getDtfRevenue: (filter = '30d') =>
+    apiClient.get(`/daily-revenue-dtf?searchKey=${filter}`),
   getNotClosedInvoices: filter =>
     apiClient.get(`/monthly-notclose-inv?searchKey=${filter}`),
-  getDegsignRevenue: () => apiClient.get(`/daily-revenue-design`),
+  getDegsignRevenue: (filter = '30d') =>
+    apiClient.get(`/daily-revenue-design?searchKey=${filter}`),
   getHeatpressRevenue: filter =>
     apiClient.get(`/Heatpress-revenue?searchKey=${filter}`),
 };

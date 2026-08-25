@@ -4,7 +4,7 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { storage, StorageKeys } from '../utils/storage';
-import { authAPI } from '../api/apiClient';
+import { authAPI, setUnauthorizedHandler } from '../api/apiClient';
 
 const AuthContext = createContext({});
 
@@ -103,6 +103,19 @@ export const AuthProvider = ({ children }) => {
       return { success: false, message };
     }
   };
+
+  // The token can stop being accepted while the app is open — expired, revoked,
+  // or the account disabled. Without this the user is left on a screen full of
+  // errors, and only a manual logout/login clears it.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setToken(null);
+      setUser(null);
+      setPermissions([]);
+    });
+
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   const logout = async () => {
     try {

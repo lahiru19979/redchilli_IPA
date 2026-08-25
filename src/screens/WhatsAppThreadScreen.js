@@ -32,6 +32,7 @@ import ImagePicker from 'react-native-image-crop-picker';
 import audioRecorder from 'react-native-audio-recorder-player';
 import Geolocation from '@react-native-community/geolocation';
 import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { whatsappAPI, MEDIA_BASE_URL } from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -83,6 +84,9 @@ const fileLabel = item => {
 const isPlaceholderBody = body => !body || /^\[.*\]$/.test(body.trim());
 
 const WhatsAppThreadScreen = ({ route, navigation }) => {
+  // Android 15 forces apps to draw edge to edge, so the composer would otherwise
+  // sit underneath the system navigation bar.
+  const insets = useSafeAreaInsets();
   const { customerId, name, phone } = route.params;
   const { hasPermission } = useAuth();
   const canSend = hasPermission('send_whatsapp_message');
@@ -1498,7 +1502,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
       )}
 
       {canSend && recording ? (
-        <View style={styles.composer}>
+        <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
           <TouchableOpacity style={styles.attachBtn} onPress={cancelRecording}>
             <Text style={styles.recCancel}>✕</Text>
           </TouchableOpacity>
@@ -1522,7 +1526,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
           </TouchableOpacity>
         </View>
       ) : canSend ? (
-        <View style={styles.composerWrap}>
+        <View style={[styles.composerWrap, { paddingBottom: insets.bottom + 8 }]}>
           <View style={styles.optionsRow}>
             <TouchableOpacity style={styles.optionBtn} onPress={openSavedReplies}>
               <Text style={styles.attachIcon}>💬</Text>
@@ -1585,7 +1589,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
           </View>
         </View>
       ) : (
-        <Text style={styles.noPermission}>
+        <Text style={[styles.noPermission, { paddingBottom: insets.bottom + 8 }]}>
           You don't have permission to send WhatsApp messages.
         </Text>
       )}

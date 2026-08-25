@@ -41,10 +41,12 @@ const ACTION_CARDS = [
   {
     id: 'all_inventory',
     icon: '🗃️',
-    title: 'Inventories',
-    subtitle: 'View & manage stock',
+    title: 'Inventory',
+    subtitle: 'Stock, history & barcodes',
     color: C.warning,
-    screen: 'AllStocks',
+    // One card for all four modules; the hub screen lists them and applies each
+    // module's own permission.
+    screen: 'InventoryHub',
     permission: 'view_inventory',
   },
   {

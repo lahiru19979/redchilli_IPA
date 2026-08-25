@@ -7,7 +7,7 @@
     "owner": "lahiru_97",
     "android": {
       "package": "com.redchilli.rcmerchant",
-      "versionCode": 12
+      "versionCode": 13
     },
     "extra": {
       "eas": {

@@ -8,8 +8,14 @@ import {
 } from 'react-native';
 import {getStatusInfo, formatDate} from '../utils/helpers';
 import {downloadInvoicePdf, sendInvoiceViaCrm} from '../utils/whatsapp';
+import {useAuth} from '../context/AuthContext';
 
 const InvoiceCard = ({invoice, onPress}) => {
+  const {hasPermission} = useAuth();
+  // The send goes through the WhatsApp CRM and the server checks this same
+  // permission, so showing the button without it only produces a 403.
+  const canSendWhatsapp = hasPermission('send_whatsapp_message');
+
   const statusInfo = getStatusInfo(invoice.status_label);
 
   // Rendering the PDF takes a moment on the server, so each action shows its
@@ -69,24 +75,26 @@ const InvoiceCard = ({invoice, onPress}) => {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.shareBtn]}
-          onPress={() =>
-            run('share', () =>
-              sendInvoiceViaCrm({
-                id: invoice.id,
-                invNo: invoice.inv_no,
-                phone: invoice.phone,
-              }),
-            )
-          }
-          disabled={!!busy}>
-          {busy === 'share' ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.actionText}>Send WhatsApp</Text>
-          )}
-        </TouchableOpacity>
+        {canSendWhatsapp && (
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.shareBtn]}
+            onPress={() =>
+              run('share', () =>
+                sendInvoiceViaCrm({
+                  id: invoice.id,
+                  invNo: invoice.inv_no,
+                  phone: invoice.phone,
+                }),
+              )
+            }
+            disabled={!!busy}>
+            {busy === 'share' ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.actionText}>Send WhatsApp</Text>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );

@@ -18,7 +18,7 @@ const FILTERS = [
   {id: '5y', label: '5 Years', value: '5y'},
 ];
 
-const MonthlyRevenueChart = ({title = 'Monthly Revenue'}) => {
+const MonthlyRevenueChart = ({title = 'Monthly Revenue', onData}) => {
   const [activeFilter, setActiveFilter] = useState('1y');
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,14 @@ const MonthlyRevenueChart = ({title = 'Monthly Revenue'}) => {
 
   useEffect(() => {
     fetchChartData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFilter]);
+
+  // Hand the loaded series to the parent for its Sales Overview cards.
+  useEffect(() => {
+    if (onData) onData(chartData);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartData]);
 
   const fetchChartData = async () => {
     setLoading(true);
@@ -128,8 +135,13 @@ const MonthlyRevenueChart = ({title = 'Monthly Revenue'}) => {
     );
   }
 
-  // Calculate statistics
+  // Calculate statistics. Order does not affect any of these.
   const values = chartData.values || [];
+
+  // Newest bar on the left. Reversed only for drawing — the stored series stays
+  // oldest-first for the totals and for the Recent list on the dashboard.
+  const barValues = [...values].reverse();
+  const barLabels = [...(chartData.labels || [])].reverse();
   const totalSales = values.reduce((sum, val) => sum + parseFloat(val || 0), 0);
   const avgSales = values.length > 0 ? totalSales / values.length : 0;
   const maxSales = Math.max(...values.map(v => parseFloat(v || 0)));
@@ -176,7 +188,7 @@ const MonthlyRevenueChart = ({title = 'Monthly Revenue'}) => {
         bounces={false}
       >
         <View style={styles.chartArea}>
-          {values.map((value, index) => {
+          {barValues.map((value, index) => {
             const numValue = parseFloat(value || 0);
             const barHeight = maxValue > 0 
               ? Math.max((numValue / maxValue) * CHART_HEIGHT, 8) 
@@ -185,7 +197,7 @@ const MonthlyRevenueChart = ({title = 'Monthly Revenue'}) => {
             const isLowest = numValue === minSales && numValue > 0;
             const isZero = numValue === 0;
 
-            const label = chartData.labels[index] || '';
+            const label = barLabels[index] || '';
 
             return (
               <View

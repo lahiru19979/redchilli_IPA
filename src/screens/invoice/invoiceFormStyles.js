@@ -302,7 +302,9 @@ const styles = StyleSheet.create({
   bottomSection: {
     backgroundColor: C.surface,
     padding: 16,
-    paddingBottom: 32,
+    // Overridden at runtime with the device's real inset; this is the floor for
+    // a phone that reports none.
+    paddingBottom: 16,
     borderTopWidth: 1,
     borderTopColor: C.divider,
   },

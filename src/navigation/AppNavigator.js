@@ -7,7 +7,10 @@ import { Text, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  SafeAreaInsetsContext,
+} from 'react-native-safe-area-context';
 // Screens
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -22,6 +25,11 @@ import productsScreen from '../screens/productsScreen';
 import InventoryScanScreen from '../screens/InventoryScanScreen';
 import ScannedItemsScreen from '../screens/ScannedItemsScreen';
 import AllStocksScreen from '../screens/AllstocksScreen';
+import InventoryDetailScreen from '../screens/InventoryDetailScreen';
+import InventoryHubScreen from '../screens/InventoryHubScreen';
+import AvailableInventoryScreen from '../screens/AvailableInventoryScreen';
+import InventoryHistoryScreen from '../screens/InventoryHistoryScreen';
+import WholesaleBarcodeScreen from '../screens/WholesaleBarcodeScreen';
 import revenueScreen from '../screens/RevDashboardScreen';
 import AllProductScreen from '../screens/AllProductScreen';
 import CostScreen from '../screens/CostScreen';
@@ -111,6 +119,31 @@ const MainTabs = () => {
   );
 };
 
+/**
+ * Keeps the whole app clear of the system navigation bar.
+ *
+ * From Android 15 an app targeting SDK 35+ is forced to draw edge to edge and
+ * cannot opt out, so every screen paints underneath the bar at the bottom of the
+ * phone — which is what buried the buttons on fixed bottom bars. Reserving that
+ * space once here fixes every screen at once.
+ *
+ * The inset is then reported as 0 to everything below, because this View has
+ * already taken it. Without that, the tab bar and any screen reading the inset
+ * for itself would reserve the same strip a second time.
+ */
+const AppShell = ({ children }) => {
+  const insets = useSafeAreaInsets();
+
+  return (
+    // eslint-disable-next-line react-native/no-inline-styles
+    <View style={{ flex: 1, paddingBottom: insets.bottom }}>
+      <SafeAreaInsetsContext.Provider value={{ ...insets, bottom: 0 }}>
+        {children}
+      </SafeAreaInsetsContext.Provider>
+    </View>
+  );
+};
+
 const AppNavigator = () => {
   const { isAuthenticated, loading } = useAuth();
 
@@ -120,7 +153,8 @@ const AppNavigator = () => {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <AppShell>
+        <NavigationContainer>
         <Stack.Navigator
           screenOptions={{
             headerStyle: {
@@ -198,6 +232,31 @@ const AppNavigator = () => {
                 name="AllStocks"
                 component={AllStocksScreen}
                 options={{ title: 'Inventory' }}
+              />
+              <Stack.Screen
+                name="InventoryDetail"
+                component={InventoryDetailScreen}
+                options={{ title: 'Stock Details' }}
+              />
+              <Stack.Screen
+                name="InventoryHub"
+                component={InventoryHubScreen}
+                options={{ title: 'Inventory' }}
+              />
+              <Stack.Screen
+                name="AvailableInventory"
+                component={AvailableInventoryScreen}
+                options={{ title: 'Available Inventory' }}
+              />
+              <Stack.Screen
+                name="InventoryHistory"
+                component={InventoryHistoryScreen}
+                options={{ title: 'Inventory History' }}
+              />
+              <Stack.Screen
+                name="WholesaleBarcode"
+                component={WholesaleBarcodeScreen}
+                options={{ title: 'WholeSale Barcode' }}
               />
               <Stack.Screen
                 name="reports"
@@ -297,7 +356,8 @@ const AppNavigator = () => {
             />
           )}
         </Stack.Navigator>
-      </NavigationContainer>
+        </NavigationContainer>
+      </AppShell>
     </SafeAreaProvider>
   );
 };

@@ -24,6 +24,9 @@ const InvoiceDetailScreen = ({route, navigation}) => {
   const canEdit = hasPermission(['edit_joborder', 'view_CRM_management']);
   const canDelete = hasPermission(['delete_joborder', 'view_CRM_management']);
   const canUpdatePayment = hasPermission(['update_payment_joborder', 'view_CRM_management']);
+  // Sending goes through the WhatsApp CRM, so it needs the same permission
+  // the CRM's own send does. Without it the server refuses with a 403.
+  const canSendWhatsapp = hasPermission('send_whatsapp_message');
   const {invoice} = route.params;
   const [invoiceDetails, setInvoiceDetails] = useState(invoice);
   const [loading, setLoading] = useState(false);
@@ -200,10 +203,14 @@ const InvoiceDetailScreen = ({route, navigation}) => {
             <Text style={styles.quickActionText}>Call</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.quickActionBtn} onPress={handleWhatsApp}>
-            <Text style={styles.quickActionIcon}>💬</Text>
-            <Text style={styles.quickActionText}>WhatsApp</Text>
-          </TouchableOpacity>
+          {canSendWhatsapp && (
+            <TouchableOpacity
+              style={styles.quickActionBtn}
+              onPress={handleWhatsApp}>
+              <Text style={styles.quickActionIcon}>💬</Text>
+              <Text style={styles.quickActionText}>WhatsApp</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity style={styles.quickActionBtn} onPress={handleDownload}>
             <Text style={styles.quickActionIcon}>⤓</Text>
