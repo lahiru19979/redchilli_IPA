@@ -114,7 +114,7 @@ const DtfRevenueChart = ({data, title = 'last 30 days Dtf Revenue'}) => {
                           ? '#28a745'
                           : isLowest
                           ? '#dc3545'
-                          : '#007AFF',
+                          : '#C4212D',
                       },
                     ]}
                   />
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: '#C4212D',
   },
   statLabel: {
     fontSize: 11,

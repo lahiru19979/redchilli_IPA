@@ -111,7 +111,7 @@ const MonthlyRevenueChart = ({title = 'Monthly Revenue', onData}) => {
         <Text style={styles.title}>{title}</Text>
         {renderFilterTabs()}
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color="#C4212D" />
           <Text style={styles.loadingText}>Loading chart...</Text>
         </View>
       </View>
@@ -236,7 +236,7 @@ const MonthlyRevenueChart = ({title = 'Monthly Revenue', onData}) => {
                           ? '#28a745'
                           : isLowest
                           ? '#dc3545'
-                          : '#007AFF',
+                          : '#C4212D',
                       },
                     ]}
                   />
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   filterTabActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#C4212D',
   },
   filterTabText: {
     fontSize: 13,
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: '#C4212D',
   },
   statLabel: {
     fontSize: 11,
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   retryButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#C4212D',
     paddingHorizontal: 24,
     paddingVertical: 10,
     borderRadius: 8,

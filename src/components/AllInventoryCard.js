@@ -25,7 +25,7 @@ const AllInventoryCard = ({inventory, onPress}) => {
       'XXL': '#795548',
       'XXXL': '#607D8B',
     };
-    return sizes[size?.toUpperCase()] || '#007AFF';
+    return sizes[size?.toUpperCase()] || '#C4212D';
   };
 
   const stockStatus = getStockStatus(inventory.count);
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   codeContainer: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#FBE9EA',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   itemCode: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#1565C0',
+    color: '#C4212D',
   },
   statusBadge: {
     paddingHorizontal: 12,

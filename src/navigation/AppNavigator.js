@@ -76,7 +76,7 @@ const MainTabs = () => {
         tabBarIcon: ({ focused }) => (
           <TabIcon name={route.name} focused={focused} />
         ),
-        tabBarActiveTintColor: '#007AFF',
+        tabBarActiveTintColor: '#C4212D',
         tabBarInactiveTintColor: 'gray',
         tabBarStyle: {
           height: 60 + insets.bottom,
@@ -87,7 +87,7 @@ const MainTabs = () => {
           fontSize: 12,
         },
         headerStyle: {
-          backgroundColor: '#007AFF',
+          backgroundColor: '#C4212D',
         },
         headerTintColor: '#fff',
         headerTitleStyle: {
@@ -158,7 +158,7 @@ const AppNavigator = () => {
         <Stack.Navigator
           screenOptions={{
             headerStyle: {
-              backgroundColor: '#007AFF',
+              backgroundColor: '#C4212D',
             },
             headerTintColor: '#fff',
             headerTitleStyle: {

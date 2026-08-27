@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   },
   productCode: {
     fontSize: 12,
-    color: '#007AFF',
+    color: '#C4212D',
     fontWeight: '500',
     marginTop: 2,
   },
@@ -308,14 +308,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   availabilityBadge: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#FBE9EA',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   availabilityText: {
     fontSize: 10,
-    color: '#1976D2',
+    color: C.accent,
   },
   arrowContainer: {
     justifyContent: 'center',
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
   editBtn: {
-    backgroundColor: '#1565C0',
+    backgroundColor: '#C4212D',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,

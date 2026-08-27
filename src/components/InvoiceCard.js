@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   invoiceNumber: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: '#C4212D',
   },
   statusBadge: {
     paddingHorizontal: 10,

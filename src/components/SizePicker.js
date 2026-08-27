@@ -160,8 +160,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   sizeItemSelected: {
-    backgroundColor: '#E3F2FD',
-    borderColor: '#007AFF',
+    backgroundColor: '#FBE9EA',
+    borderColor: '#C4212D',
   },
   sizeName: {
     fontSize: 20,
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sizeNameSelected: {
-    color: '#007AFF',
+    color: '#C4212D',
   },
   sizeLabel: {
     fontSize: 11,
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   sizeLabelSelected: {
-    color: '#007AFF',
+    color: '#C4212D',
   },
   checkmark: {
     position: 'absolute',
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#C4212D',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   },
   sizeChartText: {
     fontSize: 14,
-    color: '#007AFF',
+    color: '#C4212D',
     fontWeight: '500',
   },
 });

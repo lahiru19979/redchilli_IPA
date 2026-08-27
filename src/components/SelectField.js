@@ -171,11 +171,11 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   optionTextSelected: {
-    color: '#007AFF',
+    color: '#C4212D',
     fontWeight: '600',
   },
   check: {
-    color: '#007AFF',
+    color: '#C4212D',
     fontSize: 16,
     fontWeight: '700',
   },

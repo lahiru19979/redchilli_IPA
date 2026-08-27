@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   },
   productCode: {
     fontSize: 12,
-    color: '#007AFF',
+    color: '#C4212D',
     marginBottom: 6,
     fontWeight: '500',
   },
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
     color: '#2E7D32',
   },
   editBtn: {
-    backgroundColor: '#1565C0',
+    backgroundColor: '#C4212D',
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 6,

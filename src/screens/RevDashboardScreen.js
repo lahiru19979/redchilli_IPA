@@ -323,7 +323,7 @@ const RevDashboardScreen = ({ navigation }) => {
               <SalesChart
                 data={chartData}
                 title="Daily Sales"
-                barColor="#007AFF"
+                barColor="#C4212D"
                 highColor="#28a745"
                 lowColor="#dc3545"
               />

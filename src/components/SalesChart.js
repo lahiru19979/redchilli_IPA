@@ -5,7 +5,7 @@ import {View, Text, StyleSheet, ScrollView} from 'react-native';
 const SalesChart = ({
   data, 
   title = 'Sales Overview',
-  barColor = '#007AFF',      // Default bar color
+  barColor = '#C4212D',      // Default bar color
   highColor = '#28a745',     // Highest value color
   lowColor = '#dc3545',      // Lowest value color
 }) => {

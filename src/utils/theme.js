@@ -6,17 +6,20 @@ import { useColorScheme } from 'react-native';
 //
 //   import { C } from '../utils/theme';
 //
-// The palette is the Material-Blue scheme (#1565C0). The `alias` values below
+// The palette is RedChilli's red (#C4212D). The `alias` values below
 // map the many legacy hex colors that used to be scattered across screens onto
 // these canonical tokens, so older code can be migrated mechanically.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const C = {
-  // Brand
-  navy: '#1A237E',
-  accent: '#1565C0',
-  accentDark: '#0D47A1',
-  accentLight: '#E3F2FD',
+  // Brand. RedChilli's red, #C4212D, with a darker shade for pressed states and
+  // headings and a pale tint for selected rows and chips.
+  // `navy` is a historical name kept so the many screens importing it keep
+  // working; it now holds the dark red.
+  navy: '#8E1720',
+  accent: '#C4212D',
+  accentDark: '#8E1720',
+  accentLight: '#FBE9EA',
 
   // Status
   green: '#2E7D32',
@@ -44,8 +47,9 @@ export const C = {
 };
 
 // WhatsApp's own palette, for the CRM's chat screens only. Kept apart from C so
-// the rest of the app keeps the RedChilli blue — only the messaging surface is
-// meant to feel like WhatsApp.
+// the messaging surface can keep WhatsApp's greens — bubbles, ticks, the new
+// chat button — while the rest of the app is RedChilli red. Only the chrome
+// around it (the header, the accents) follows the brand.
 //
 // Two variants with identical keys, so a screen can swap the whole palette in
 // one assignment instead of testing the scheme at every colour.
@@ -71,10 +75,10 @@ export const WA_LIGHT = {
   // Selected filter pills and the reaction row.
   chipOn: '#D9FDD3',
   chipOnText: '#0F5C43',
-  accent: '#1565C0',
-  accentLight: '#E3F2FD',
+  accent: '#C4212D',
+  accentLight: '#FBE9EA',
   backdrop: 'rgba(0,0,0,0.4)',
-  headerBg: '#007AFF',
+  headerBg: '#C4212D',
 };
 
 export const WA_DARK = {
@@ -102,8 +106,10 @@ export const WA_DARK = {
   badge: '#00A884',
   chipOn: '#005C4B',
   chipOnText: '#D9FDD3',
-  accent: '#53BDEB',
-  accentLight: '#182C36',
+  // Lighter than the brand red so it reads on a dark panel: #C4212D on #111B21
+  // measures 2.4:1, which is unreadable.
+  accent: '#E8737D',
+  accentLight: '#3A1B1E',
   backdrop: 'rgba(0,0,0,0.6)',
   headerBg: '#1F2C34',
 };

@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   itemCode: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#007AFF',
+    color: '#C4212D',
     marginBottom: 2,
   },
   productName: {
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 6,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#C4212D',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
   },
   changeIcon: {
     fontSize: 12,
-    color: '#007AFF',
+    color: '#C4212D',
     fontWeight: '500',
   },
   // Price Selection
@@ -362,8 +362,8 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
   },
   priceBtnActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: '#C4212D',
+    borderColor: '#C4212D',
   },
   priceBtnText: {
     fontSize: 11,
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#C4212D',
     justifyContent: 'center',
     alignItems: 'center',
   },
