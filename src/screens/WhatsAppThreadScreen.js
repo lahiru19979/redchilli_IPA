@@ -10,7 +10,7 @@ import React, {
   useRef,
   useMemo,
 } from 'react';
-import {
+import {
   View,
   Text,
   StyleSheet,
@@ -25,6 +25,7 @@ import {
   Platform,
   Modal,
   ScrollView,
+  Keyboard,
 } from 'react-native';
 import ImagePicker from 'react-native-image-crop-picker';
 // v4 exports a ready-made instance, not a class: `new AudioRecorderPlayer()`
@@ -36,7 +37,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { whatsappAPI, MEDIA_BASE_URL } from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { C } from '../utils/theme';
+import WaIcon, { WaTicks } from '../components/WaIcon';
+import WaWallpaper from '../components/WaWallpaper';
+import WaAvatar from '../components/WaAvatar';
+import EmojiPicker from '../components/EmojiPicker';
+import { C, WA_LIGHT, WA_DARK } from '../utils/theme';
+import { useWaTheme } from '../utils/waTheme';
 
 // react-native-permissions already asks; letting the library ask as well
 // races the two dialogs and the second one silently fails on Android.
@@ -83,7 +89,101 @@ const fileLabel = item => {
 // of a caption. Printing them under the attachment is just noise.
 const isPlaceholderBody = body => !body || /^\[.*\]$/.test(body.trim());
 
+// The + sheet's tiles, in the order WhatsApp lays them out. Kept as data rather
+// than repeated JSX so the permission rules and the colours sit in one place.
+// What a photo is re-encoded at on the way out. The long edge is capped rather
+// than the quality dialled down: 2048px at 92% is a touch better than WhatsApp's
+// own ~1600px at ~80%, and lands well under the Cloud API's 5MB image limit.
+// The 0.8 this used to be was re-compressing every photo, including ones that
+// needed no shrinking at all.
+const PHOTO_QUALITY = {
+  compressImageMaxWidth: 2048,
+  compressImageMaxHeight: 2048,
+  compressImageQuality: 0.92,
+};
+
+// Header icons are small; give them a touch target that is not.
+const HIT = { top: 10, bottom: 10, left: 10, right: 10 };
+
+// What the chat header's menu offers. Call and Jobs are deliberately not here —
+// they stay on the header, one tap away, being the two things reached for
+// mid-conversation.
+const HEADER_ITEMS = [
+  {
+    id: 'search',
+    label: 'Search',
+    icon: 'search',
+    color: '#0E8A9B',
+    enabled: () => true,
+    run: a => a.setSearchOpen(true),
+  },
+  {
+    id: 'media',
+    label: 'Media',
+    icon: 'image',
+    color: '#5D5FEF',
+    enabled: () => true,
+    run: a => a.openMedia(),
+  },
+];
+
+const ATTACH_ITEMS = [
+  {
+    id: 'photos',
+    label: 'Gallery',
+    icon: 'image',
+    color: '#5D5FEF',
+    enabled: () => true,
+    run: a => a.attach(),
+  },
+  {
+    id: 'camera',
+    label: 'Camera',
+    icon: 'camera',
+    color: '#E0457B',
+    enabled: () => true,
+    run: a => a.takePhoto(),
+  },
+  {
+    id: 'location',
+    label: 'Location',
+    icon: 'location',
+    color: '#00A884',
+    enabled: () => true,
+    run: a => a.openLocation(),
+  },
+  {
+    id: 'product',
+    label: 'Product',
+    icon: 'catalog',
+    color: '#E8901A',
+    enabled: p => p.canProducts,
+    run: a => a.openProducts(),
+  },
+  {
+    id: 'template',
+    label: 'FB Template',
+    icon: 'template',
+    color: '#D9414F',
+    enabled: p => p.canTemplate,
+    run: a => a.openTemplates(),
+  },
+  {
+    id: 'saved',
+    label: 'Quick Reply',
+    icon: 'savedReply',
+    color: '#0E8A9B',
+    enabled: () => true,
+    run: a => a.openSavedReplies(),
+  },
+];
+
 const WhatsAppThreadScreen = ({ route, navigation }) => {
+  // Follows the phone's appearance setting. Shadowing WA and styles
+  // here means every reference below switches with it, untouched.
+  const { dark, WA } = useWaTheme();
+  const styles = dark ? DARK_STYLES : LIGHT_STYLES;
+
   // Android 15 forces apps to draw edge to edge, so the composer would otherwise
   // sit underneath the system navigation bar.
   const insets = useSafeAreaInsets();
@@ -95,9 +195,73 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [text, setText] = useState('');
+  const [emojiOpen, setEmojiOpen] = useState(false);
+
+  // Where the caret is, so a tapped emoji lands there instead of always at the
+  // end. The ref is what the handlers read (state would be a keystroke stale);
+  // the state is only set right after an insert, to push the caret past the
+  // emoji, and released again so typing stays uncontrolled.
+  const caret = useRef({ start: 0, end: 0 });
+  const [selection, setSelection] = useState(undefined);
+
+  useEffect(() => {
+    if (!selection) return undefined;
+    const id = setTimeout(() => setSelection(undefined), 40);
+    return () => clearTimeout(id);
+  }, [selection]);
+
+  const replaceAtCaret = replacement => {
+    const { start, end } = caret.current;
+    const a = Math.min(start, text.length);
+    const b = Math.min(Math.max(end, a), text.length);
+    const next = text.slice(0, a) + replacement + text.slice(b);
+    const at = a + replacement.length;
+
+    setText(next);
+    caret.current = { start: at, end: at };
+    setSelection({ start: at, end: at });
+  };
+
+  // One tap deletes one emoji, not one code unit: an emoji is several code
+  // points joined by zero-width joiners, and dropping a single one leaves the
+  // wreckage of half a glyph behind.
+  const backspace = () => {
+    const { start, end } = caret.current;
+    const a = Math.min(start, text.length);
+    const b = Math.min(Math.max(end, a), text.length);
+
+    if (a !== b) {
+      replaceAtCaret('');
+      return;
+    }
+    if (!a) return;
+
+    const points = Array.from(text.slice(0, a));
+    let dropped = points.pop();
+    // A variation selector belongs to the glyph in front of it.
+    if (dropped === '️') points.pop();
+    // And a joiner means the glyph continues further back.
+    while (points.length && points[points.length - 1] === '‍') {
+      points.pop();
+      dropped = points.pop();
+      if (dropped === '️') points.pop();
+    }
+
+    const head = points.join('');
+    setText(head + text.slice(a));
+    caret.current = { start: head.length, end: head.length };
+    setSelection({ start: head.length, end: head.length });
+  };
+
+  const toggleEmoji = () => {
+    setEmojiOpen(open => {
+      // The panel takes the keyboard's place rather than stacking on top of it.
+      if (!open) Keyboard.dismiss();
+      return !open;
+    });
+  };
 
   const canTemplate = hasPermission('send_whatsapp_template');
-  const canCatalog = hasPermission('send_whatsapp_catalog');
   const canProducts = hasPermission('send_whatsapp_products');
   const canViewJobs = hasPermission('view_job_cards');
   const [templateOpen, setTemplateOpen] = useState(false);
@@ -117,6 +281,8 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
 
   const [locationOpen, setLocationOpen] = useState(false);
   const [locMode, setLocMode] = useState('share');
+  const [locLink, setLocLink] = useState('');
+  const [readingLink, setReadingLink] = useState(false);
   const [locLat, setLocLat] = useState('');
   const [locLng, setLocLng] = useState('');
   const [locName, setLocName] = useState('');
@@ -136,15 +302,14 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
   const [forwardChats, setForwardChats] = useState([]);
   const [forwardPicked, setForwardPicked] = useState([]);
   const [forwardSearch, setForwardSearch] = useState('');
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
 
   const [uploadNote, setUploadNote] = useState('');
 
-  // Catalog and product picker.
-  const [catalogOpen, setCatalogOpen] = useState(false);
-  const [catalogMode, setCatalogMode] = useState('catalog'); // catalog | products
-  const [catalogBody, setCatalogBody] = useState('Browse our catalog');
-  const [catalogFooter, setCatalogFooter] = useState('');
-  const [productHeader, setProductHeader] = useState('Our picks for you');
+  // Product picker.
+  const [productsOpen, setProductsOpen] = useState(false);
+  const [productNote, setProductNote] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -184,44 +349,66 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
     );
   };
 
+  const openJobs = () =>
+    navigation.navigate('WhatsAppJobs', { customerId, name, phone });
+
   useEffect(() => {
     navigation.setOptions({
       title: name || phone || 'Chat',
+      // The same round initial the chat list shows, so a customer looks the
+      // same on the way in as they did in the list.
+      headerTitle: () => (
+        <View style={styles.headerTitle}>
+          <WaAvatar id={customerId} name={name || phone} size={34} />
+          <Text style={styles.headerName} numberOfLines={1}>
+            {name || phone || 'Chat'}
+          </Text>
+        </View>
+      ),
+      headerTitleAlign: 'left',
+      // Call and Jobs sit on the header itself; everything else is behind the
+      // three dots.
+      // Match the chat list: the navigator's blue header would sit oddly
+      // above a dark thread.
+      headerStyle: { backgroundColor: WA.headerBg },
+      headerTintColor: '#fff',
       headerRight: () => (
         <View style={styles.headerRow}>
           {!!phone && (
-            <TouchableOpacity style={styles.headerBtn} onPress={callCustomer}>
-              <Text style={styles.headerIcon}>📞</Text>
+            <TouchableOpacity
+              onPress={callCustomer}
+              accessibilityLabel="Call customer"
+              hitSlop={HIT}
+            >
+              <WaIcon name="phone" size={21} color="#fff" />
+            </TouchableOpacity>
+          )}
+
+          {canViewJobs && (
+            <TouchableOpacity
+              onPress={openJobs}
+              accessibilityLabel="Job cards"
+              hitSlop={HIT}
+            >
+              <WaIcon name="doc" size={21} color="#fff" />
             </TouchableOpacity>
           )}
 
           <TouchableOpacity
-            style={styles.headerBtn}
-            onPress={() => setSearchOpen(true)}
+            onPress={() => setHeaderMenuOpen(true)}
+            accessibilityLabel="More options"
+            hitSlop={HIT}
           >
-            <Text style={styles.headerIcon}>🔍</Text>
+            <WaIcon name="more" size={21} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerBtn} onPress={openMedia}>
-            <Text style={styles.headerIcon}>🖼</Text>
-          </TouchableOpacity>
-
-          {canViewJobs && (
-            <TouchableOpacity
-              style={styles.headerBtn}
-              onPress={() =>
-                navigation.navigate('WhatsAppJobs', { customerId, name, phone })
-              }
-            >
-              <Text style={styles.headerIcon}>🗂</Text>
-            </TouchableOpacity>
-          )}
         </View>
       ),
     });
-    // openMedia is stable for this customer; re-running on every render would
-    // reset the header each poll.
+    // callCustomer and openMedia are re-created every render, so listing them
+    // would reset the header on every poll tick. They only read props and state
+    // that are already in this list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, name, phone, canViewJobs]);
+  }, [navigation, name, phone, canViewJobs, customerId, WA]);
 
   const rememberLastId = list => {
     list.forEach(m => {
@@ -372,8 +559,9 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
       picked = await ImagePicker.openPicker({
         mediaType: 'photo',
         multiple: true,
-        maxFiles: 10,
-        compressImageQuality: 0.8,
+        // WhatsApp's own limit. At 10 a bigger selection was quietly trimmed.
+        maxFiles: 30,
+        ...PHOTO_QUALITY,
       });
     } catch (error) {
       if (error?.code !== 'E_PICKER_CANCELLED') {
@@ -387,12 +575,39 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
     const files = (Array.isArray(picked) ? picked : [picked]).filter(Boolean);
     if (!files.length) return;
 
+    await uploadPhotos(files);
+  };
+
+  // Straight to the camera, the way WhatsApp's own Camera tile behaves. Shares
+  // the upload below with the gallery picker rather than repeating it.
+  const takePhoto = async () => {
+    if (!canSend || sending) return;
+
+    let shot;
+
+    try {
+      shot = await ImagePicker.openCamera({
+        mediaType: 'photo',
+        ...PHOTO_QUALITY,
+      });
+    } catch (error) {
+      if (error?.code !== 'E_PICKER_CANCELLED') {
+        Alert.alert('Error', 'Could not open the camera.');
+      }
+      return;
+    }
+
+    if (shot) await uploadPhotos([shot]);
+  };
+
+  const uploadPhotos = async files => {
     // WhatsApp puts the caption on the first photo only.
     const caption = text.trim();
     setText('');
     setSending(true);
 
     let failed = 0;
+    let reason = null;
 
     // Sequential on purpose: it keeps the bubbles in the order the agent
     // picked them, and one upload at a time is kinder to a phone connection.
@@ -418,6 +633,17 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
         appendLocal(res.data.message);
       } catch (error) {
         failed += 1;
+
+        // Same as the voice path: keep the refused bubble in the thread so it
+        // can be sent again, instead of the photo disappearing.
+        const rejected = error?.response?.data?.data;
+        if (rejected?.id) appendLocal(rejected);
+
+        // Meta's own reason is worth carrying — 'check your connection' is
+        // wrong when the real problem is an expired token or the 24h window.
+        if (typeof error?.response?.data?.message === 'string') {
+          reason = error.response.data.message;
+        }
       }
     }
 
@@ -425,11 +651,19 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
     setSending(false);
 
     if (failed) {
+      const summary =
+        failed === files.length
+          ? `None of those ${files.length} photos went through.`
+          : `${failed} of ${files.length} did not send.`;
+
+      // Meta's reason first when there is one, then where to find them: every
+      // refused photo stays in the thread marked failed, with Resend on it.
+      const where =
+        ' They are in the thread marked failed — tap one and choose Resend.';
+
       Alert.alert(
         'Some photos did not send',
-        failed === files.length
-          ? 'None of those photos went through. Check your connection and try again.'
-          : `${failed} of ${files.length} could not be sent — try those again.`,
+        `${reason ? reason + '\n\n' : ''}${summary}${where}`,
       );
     }
   };
@@ -617,17 +851,69 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
     }
   };
 
+  const openLocation = () => {
+    // A link left over from the last place would silently send that one again.
+    setLocLink('');
+    setLocationOpen(true);
+  };
+
+  const readLocationLink = async ({ quiet = false } = {}) => {
+    const url = locLink.trim();
+
+    if (!url) {
+      if (!quiet) {
+        Alert.alert('Paste a link', 'Copy the link from Google Maps first.');
+      }
+      return null;
+    }
+
+    setReadingLink(true);
+
+    try {
+      const res = await whatsappAPI.resolveLocation(url);
+      const place = res.data.place;
+
+      setLocLat(String(place.latitude));
+      setLocLng(String(place.longitude));
+      // Only a suggestion: a name already typed is the agent's.
+      if (place.name && !locName.trim()) setLocName(place.name);
+
+      return place;
+    } catch (error) {
+      Alert.alert(
+        'Could not read that link',
+        error?.response?.data?.message
+          || 'Open it in Google Maps, tap Share, and paste the link it gives you.',
+      );
+      return null;
+    } finally {
+      setReadingLink(false);
+    }
+  };
+
   const sendLocation = async () => {
     if (sending) return;
 
     const payload = { customer_id: customerId, mode: locMode };
 
     if (locMode === 'share') {
-      const lat = parseFloat(locLat);
-      const lng = parseFloat(locLng);
+      let lat = parseFloat(locLat);
+      let lng = parseFloat(locLng);
+
+      // A pasted link is the whole answer: read it, then carry on sending.
+      if ((isNaN(lat) || isNaN(lng)) && locLink.trim()) {
+        const place = await readLocationLink();
+        if (!place) return;
+
+        lat = place.latitude;
+        lng = place.longitude;
+      }
 
       if (isNaN(lat) || isNaN(lng)) {
-        Alert.alert('Missing coordinates', 'Enter both a latitude and a longitude.');
+        Alert.alert(
+          'No location yet',
+          'Paste a Google Maps link, or enter the coordinates.',
+        );
         return;
       }
 
@@ -666,52 +952,15 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
     }
   }, []);
 
-  const openCatalog = mode => {
-    setCatalogMode(mode);
-    setCatalogOpen(true);
-
-    if (mode === 'products' && products.length === 0) {
-      loadProducts('');
-    }
+  const openProducts = () => {
+    setProductsOpen(true);
+    if (products.length === 0) loadProducts('');
   };
 
   const toggleProduct = id => {
     setChosenProducts(prev =>
       prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id],
     );
-  };
-
-  const sendCatalog = async () => {
-    if (sending) return;
-
-    if (!catalogBody.trim()) {
-      Alert.alert('Add a message', 'WhatsApp needs a line of text with the catalog.');
-      return;
-    }
-
-    setSending(true);
-
-    try {
-      const res = await whatsappAPI.sendCatalog(
-        customerId,
-        catalogBody.trim(),
-        catalogFooter.trim(),
-      );
-      appendLocal(res.data.message);
-      setCatalogOpen(false);
-    } catch (error) {
-      const failed = error?.response?.data?.message;
-      if (failed?.id) appendLocal(failed);
-
-      Alert.alert(
-        'Not sent',
-        typeof failed === 'string'
-          ? failed
-          : 'WhatsApp rejected the catalog message. Check that a commerce catalog is connected to this number.',
-      );
-    } finally {
-      setSending(false);
-    }
   };
 
   const sendProducts = async () => {
@@ -722,33 +971,30 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
       return;
     }
 
-    if (!productHeader.trim() || !catalogBody.trim()) {
-      Alert.alert('Add a heading and a message', 'Both are required for a product list.');
-      return;
-    }
-
     setSending(true);
 
     try {
       const res = await whatsappAPI.sendProducts(
         customerId,
         chosenProducts,
-        productHeader.trim(),
-        catalogBody.trim(),
-        catalogFooter.trim(),
+        productNote.trim(),
       );
-      appendLocal(res.data.message);
-      setCatalogOpen(false);
+      // A message per product, so they all go into the thread.
+      (res.data.messages || []).forEach(appendLocal);
+
+      setProductsOpen(false);
       setChosenProducts([]);
+      setProductNote('');
     } catch (error) {
-      const failed = error?.response?.data?.message;
-      if (failed?.id) appendLocal(failed);
+      const data = error?.response?.data;
+      // The ones that did go through still belong in the thread.
+      (data?.messages || []).forEach(appendLocal);
 
       Alert.alert(
         'Not sent',
-        typeof failed === 'string'
-          ? failed
-          : 'WhatsApp rejected the product list. The products must exist in the connected commerce catalog under the same product codes.',
+        typeof data?.message === 'string'
+          ? data.message
+          : 'WhatsApp rejected these products. If the customer has not messaged in the last 24 hours, send an approved template first.',
       );
     } finally {
       setSending(false);
@@ -813,7 +1059,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
         mediaType: 'photo',
         multiple: true,
         maxFiles: 10,
-        compressImageQuality: 0.8,
+        ...PHOTO_QUALITY,
       });
 
       const files = (Array.isArray(picked) ? picked : [picked]).filter(Boolean);
@@ -1101,6 +1347,38 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
     }
   };
 
+  // Send an outbound message again — mainly one that came back 'failed', since
+  // WhatsApp has no retry of its own.
+  const resendMessage = async message => {
+    if (!message || sending) return;
+
+    setActionMsg(null);
+    setSending(true);
+
+    try {
+      const res = await whatsappAPI.resend(message.id);
+
+      // The list is inverted, so the new bubble lands at the visual bottom on
+      // its own — no scrolling to arrange.
+      appendLocal(res.data.message);
+
+      // A second failure looks identical to a success in the thread, so say so.
+      if (res.data.status === 'failed') {
+        Alert.alert(
+          'Still not delivered',
+          'WhatsApp refused it again. Check the number and the 24-hour window.',
+        );
+      }
+    } catch (error) {
+      Alert.alert(
+        'Could not resend',
+        error?.response?.data?.message || 'Please try again.',
+      );
+    } finally {
+      setSending(false);
+    }
+  };
+
   const micPermission = async () => {
     const permission = Platform.OS === 'android'
       ? PERMISSIONS.ANDROID.RECORD_AUDIO
@@ -1203,9 +1481,17 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
       const res = await whatsappAPI.sendMedia(formData);
       appendLocal(res.data.message);
     } catch (error) {
+      // A refusal still returns the bubble under data, so put it in the thread:
+      // it shows as failed and can be sent again from the long-press sheet,
+      // rather than the recording vanishing with only an alert to show for it.
+      const failed = error?.response?.data?.data;
+      if (failed?.id) appendLocal(failed);
+
       Alert.alert(
         'Not sent',
-        error?.response?.data?.message || 'Could not send that voice message.',
+        typeof error?.response?.data?.message === 'string'
+          ? error.response.data.message
+          : 'Could not send that voice message.',
       );
     } finally {
       setSending(false);
@@ -1220,12 +1506,29 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
     return `${m}:${String(sec).padStart(2, '0')}`;
   };
 
-  const tick = status => {
-    if (status === 'read') return '✓✓';
-    if (status === 'delivered') return '✓✓';
-    if (status === 'sent') return '✓';
-    if (status === 'failed') return '⚠';
-    return '🕐';
+  // Delivery state as WhatsApp draws it: a clock while pending, one tick sent,
+  // two delivered, two blue read. Text glyphs never lined up with the timestamp
+  // and the emoji clock rendered at a different size on every device.
+  // A clock until WhatsApp has it, one tick once sent, two on delivery, two in
+  // blue once read — and a warning triangle when it was refused.
+  const renderTick = status => {
+    if (status === 'failed') {
+      return <WaIcon name="alert" size={13} color={C.danger} />;
+    }
+
+    if (status === 'read') {
+      return <WaTicks double size={16} color={WA.tickRead} />;
+    }
+
+    if (status === 'delivered') {
+      return <WaTicks double size={16} color={WA.tick} />;
+    }
+
+    if (status === 'sent') {
+      return <WaTicks double={false} size={16} color={WA.tick} />;
+    }
+
+    return <WaIcon name="clock" size={12} color={WA.tick} />;
   };
 
   const renderBubble = ({ item }) => {
@@ -1369,23 +1672,17 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
           )}
 
           <View style={styles.metaRow}>
-            {!!item.pinned && <Text style={styles.metaFlag}>📌</Text>}
-            {!!item.starred && <Text style={styles.metaFlag}>⭐</Text>}
+            {!!item.pinned && (
+              <WaIcon name="pin" size={12} color={WA.tick} />
+            )}
+            {!!item.starred && (
+              <WaIcon name="star" size={12} color={WA.tick} />
+            )}
             {!!item.reaction && (
               <Text style={styles.reaction}>{item.reaction}</Text>
             )}
             <Text style={styles.time}>{time}</Text>
-            {out && (
-              <Text
-                style={[
-                  styles.tick,
-                  item.status === 'read' && styles.tickRead,
-                  item.status === 'failed' && styles.tickFailed,
-                ]}
-              >
-                {tick(item.status)}
-              </Text>
-            )}
+            {out && renderTick(item.status)}
           </View>
         </TouchableOpacity>
       </View>
@@ -1402,6 +1699,10 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
+      {/* Behind everything: absolutely positioned, so it does not affect layout
+          and the list scrolls over a still background the way WhatsApp's does. */}
+      <WaWallpaper dark={dark} background={WA.chatBg} />
+
       <FlatList
         ref={listRef}
         data={inverted}
@@ -1448,7 +1749,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
             setPinIndex((pinIndex + 1) % pins.length);
           }}
         >
-          <Text style={styles.pinIcon}>📌</Text>
+          <WaIcon name="pin" size={16} color={WA.icon} />
 
           <Text style={styles.pinText} numberOfLines={1}>
             {pins[pinIndex]?.preview || '(no text)'}
@@ -1496,7 +1797,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
 
       {!!uploadNote && (
         <View style={styles.uploadNote}>
-          <ActivityIndicator color={C.accent} size="small" />
+          <ActivityIndicator color={WA.accent} size="small" />
           <Text style={styles.uploadNoteText}>{uploadNote}</Text>
         </View>
       )}
@@ -1504,7 +1805,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
       {canSend && recording ? (
         <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
           <TouchableOpacity style={styles.attachBtn} onPress={cancelRecording}>
-            <Text style={styles.recCancel}>✕</Text>
+            <WaIcon name="trash" size={22} color={C.danger} />
           </TouchableOpacity>
 
           <View style={styles.recBar}>
@@ -1521,78 +1822,188 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
             {sending ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.sendIcon}>➤</Text>
+              <WaIcon name="send" size={20} color="#fff" />
             )}
           </TouchableOpacity>
         </View>
       ) : canSend ? (
-        <View style={[styles.composerWrap, { paddingBottom: insets.bottom + 8 }]}>
-          <View style={styles.optionsRow}>
-            <TouchableOpacity style={styles.optionBtn} onPress={openSavedReplies}>
-              <Text style={styles.attachIcon}>💬</Text>
-            </TouchableOpacity>
-
-            {(canCatalog || canProducts) && (
-              <TouchableOpacity
-                style={styles.optionBtn}
-                onPress={() => openCatalog(canCatalog ? 'catalog' : 'products')}
-              >
-                <Text style={styles.attachIcon}>🛍</Text>
-              </TouchableOpacity>
-            )}
-
-            {canTemplate && (
-              <TouchableOpacity style={styles.optionBtn} onPress={openTemplates}>
-                <Text style={styles.attachIcon}>📋</Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={styles.optionBtn}
-              onPress={() => setLocationOpen(true)}
-            >
-              <Text style={styles.attachIcon}>📍</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.optionBtn} onPress={attach}>
-              <Text style={styles.attachIcon}>📎</Text>
-            </TouchableOpacity>
-          </View>
-
+        <View
+          style={[
+            styles.composerWrap,
+            { paddingBottom: emojiOpen ? 8 : insets.bottom + 8 },
+          ]}
+        >
           <View style={styles.composerRow}>
-            <TextInput
-              style={styles.input}
-              placeholder="Type a message"
-              placeholderTextColor={C.textSecondary}
-              value={text}
-              onChangeText={setText}
-              multiline
-            />
-
-            {!text.trim() && (
-              <TouchableOpacity style={styles.attachBtn} onPress={startRecording}>
-                <Text style={styles.attachIcon}>🎤</Text>
+            {/* Everything except send lives inside one rounded field, the way
+                WhatsApp lays it out: emoji left, then the text, then the
+                attachment and camera shortcuts on the right. */}
+            <View style={styles.inputPill}>
+              <TouchableOpacity
+                style={styles.pillIcon}
+                onPress={toggleEmoji}
+                accessibilityLabel={emojiOpen ? 'Keyboard' : 'Emoji'}
+              >
+                <WaIcon
+                  name={emojiOpen ? 'keyboard' : 'emoji'}
+                  size={24}
+                  color={WA.iconMuted}
+                />
               </TouchableOpacity>
-            )}
 
+              <TextInput
+                style={styles.input}
+                placeholder="Message"
+                placeholderTextColor={WA.textMuted}
+                value={text}
+                onChangeText={setText}
+                selection={selection}
+                onSelectionChange={e => {
+                  caret.current = e.nativeEvent.selection;
+                }}
+                // Reaching for the keyboard is how you dismiss the panel.
+                onFocus={() => setEmojiOpen(false)}
+                multiline
+              />
+
+              <TouchableOpacity
+                style={styles.pillIcon}
+                onPress={() => setAttachOpen(true)}
+                accessibilityLabel="Attach a file"
+              >
+                <WaIcon name="attach" size={22} color={WA.iconMuted} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.pillIcon}
+                onPress={takePhoto}
+                accessibilityLabel="Take a photo"
+              >
+                <WaIcon name="camera" size={22} color={WA.iconMuted} />
+              </TouchableOpacity>
+            </View>
+
+            {/* The round button outside the pill: a mic until there is
+                something to send, then send. */}
             <TouchableOpacity
               style={[styles.sendBtn, sending && styles.sendBtnDisabled]}
-              onPress={send}
+              onPress={text.trim() ? send : startRecording}
               disabled={sending}
+              accessibilityLabel={text.trim() ? 'Send' : 'Record a voice message'}
             >
               {sending ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={styles.sendIcon}>➤</Text>
+                <WaIcon
+                  name={text.trim() ? 'send' : 'mic'}
+                  size={22}
+                  color="#fff"
+                />
               )}
             </TouchableOpacity>
           </View>
+
+          {emojiOpen && (
+            <View style={styles.emojiWrap}>
+              <EmojiPicker
+                dark={dark}
+                WA={WA}
+                onPick={replaceAtCaret}
+                onBackspace={backspace}
+              />
+              {/* Fills the gesture bar so the tab row is not cut in half. */}
+              <View style={[styles.emojiSafe, { height: insets.bottom }]} />
+            </View>
+          )}
         </View>
       ) : (
         <Text style={[styles.noPermission, { paddingBottom: insets.bottom + 8 }]}>
           You don't have permission to send WhatsApp messages.
         </Text>
       )}
+
+      <Modal
+        visible={headerMenuOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setHeaderMenuOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.attachBackdrop}
+          activeOpacity={1}
+          onPress={() => setHeaderMenuOpen(false)}
+        >
+          <View style={[styles.attachPanel, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.attachGrab} />
+
+            <View style={styles.attachGrid}>
+              {HEADER_ITEMS.filter(tile => tile.enabled()).map(
+                tile => (
+                  <TouchableOpacity
+                    key={tile.id}
+                    style={styles.attachTile}
+                    onPress={() => {
+                      setHeaderMenuOpen(false);
+                      tile.run({ openMedia, setSearchOpen });
+                    }}
+                  >
+                    <View style={styles.attachCircle}>
+                      <WaIcon name={tile.icon} size={26} color={tile.color} />
+                    </View>
+
+                    <Text style={styles.attachLabel}>{tile.label}</Text>
+                  </TouchableOpacity>
+                ),
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={attachOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAttachOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.attachBackdrop}
+          activeOpacity={1}
+          onPress={() => setAttachOpen(false)}
+        >
+          <View style={[styles.attachPanel, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.attachGrab} />
+
+            <View style={styles.attachGrid}>
+              {ATTACH_ITEMS.filter(tile => tile.enabled({
+                canProducts,
+                canTemplate,
+              })).map(tile => (
+                <TouchableOpacity
+                  key={tile.id}
+                  style={styles.attachTile}
+                  onPress={() => {
+                    setAttachOpen(false);
+                    tile.run({
+                      attach,
+                      takePhoto,
+                      openLocation,
+                      openProducts,
+                      openTemplates,
+                      openSavedReplies,
+                    });
+                  }}
+                >
+                  <View style={styles.attachCircle}>
+                    <WaIcon name={tile.icon} size={26} color={tile.color} />
+                  </View>
+
+                  <Text style={styles.attachLabel}>{tile.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <Modal
         visible={!!actionMsg}
@@ -1637,6 +2048,19 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                 onPress={() => openForward(actionMsg)}
               >
                 <Text style={styles.sheetText}>Forward</Text>
+              </TouchableOpacity>
+            )}
+
+            {actionMsg?.direction === 'out' && actionMsg?.forwardable && (
+              <TouchableOpacity
+                style={styles.sheetItem}
+                onPress={() => resendMessage(actionMsg)}
+              >
+                <Text style={styles.sheetText}>
+                  {actionMsg?.status === 'failed'
+                    ? 'Send again — this one failed'
+                    : 'Send again'}
+                </Text>
               </TouchableOpacity>
             )}
 
@@ -1690,7 +2114,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
             <TextInput
               style={styles.modalInput}
               placeholder="Search chats"
-              placeholderTextColor={C.textSecondary}
+              placeholderTextColor={WA.textMuted}
               value={forwardSearch}
               onChangeText={setForwardSearch}
             />
@@ -1765,14 +2189,14 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
             <TextInput
               style={styles.modalInput}
               placeholder="Type at least 2 characters"
-              placeholderTextColor={C.textSecondary}
+              placeholderTextColor={WA.textMuted}
               value={searchTerm}
               onChangeText={runSearch}
               autoFocus
             />
 
             {searching ? (
-              <ActivityIndicator color={C.accent} style={styles.modalLoader} />
+              <ActivityIndicator color={WA.accent} style={styles.modalLoader} />
             ) : (
               <ScrollView style={styles.modalScroll}>
                 {searchTerm.trim().length >= 2 && searchHits.length === 0 ? (
@@ -1863,7 +2287,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                 )}
               </ScrollView>
             ) : !mediaData ? (
-              <ActivityIndicator color={C.accent} style={styles.modalLoader} />
+              <ActivityIndicator color={WA.accent} style={styles.modalLoader} />
             ) : (
               <ScrollView style={styles.modalScroll}>
                 {(mediaData[mediaTab] || []).length === 0 ? (
@@ -1963,22 +2387,35 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
               <>
                 <TextInput
                   style={styles.modalInput}
-                  placeholder="Latitude"
-                  placeholderTextColor={C.textSecondary}
-                  value={locLat}
-                  onChangeText={setLocLat}
+                  placeholder="Paste a Google Maps link"
+                  placeholderTextColor={WA.textMuted}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={locLink}
+                  onChangeText={setLocLink}
                 />
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="Longitude"
-                  placeholderTextColor={C.textSecondary}
-                  value={locLng}
-                  onChangeText={setLocLng}
-                />
+                <TouchableOpacity
+                  style={[styles.locateBtn, readingLink && styles.disabled]}
+                  onPress={() => readLocationLink()}
+                  disabled={readingLink}
+                >
+                  {readingLink ? (
+                    <ActivityIndicator color={WA.accent} size="small" />
+                  ) : (
+                    <Text style={styles.locateBtnText}>Read link</Text>
+                  )}
+                </TouchableOpacity>
+
+                <Text style={styles.modalHint}>
+                  In Google Maps, tap Share and copy the link. WhatsApp needs a
+                  pin, so the link is read into one — hit Send and it happens on
+                  its own.
+                </Text>
+
                 <TextInput
                   style={styles.modalInput}
                   placeholder="Place name (optional)"
-                  placeholderTextColor={C.textSecondary}
+                  placeholderTextColor={WA.textMuted}
                   value={locName}
                   onChangeText={setLocName}
                 />
@@ -1988,15 +2425,26 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                   disabled={locatingMe}
                 >
                   {locatingMe ? (
-                    <ActivityIndicator color={C.accent} size="small" />
+                    <ActivityIndicator color={WA.accent} size="small" />
                   ) : (
                     <Text style={styles.locateBtnText}>Use my current location</Text>
                   )}
                 </TouchableOpacity>
 
-                <Text style={styles.modalHint}>
-                  Or long-press a spot in Google Maps to copy its coordinates.
-                </Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Latitude"
+                  placeholderTextColor={WA.textMuted}
+                  value={locLat}
+                  onChangeText={setLocLat}
+                />
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Longitude"
+                  placeholderTextColor={WA.textMuted}
+                  value={locLng}
+                  onChangeText={setLocLng}
+                />
               </>
             ) : (
               <>
@@ -2045,11 +2493,11 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>
-              {chosenTemplate ? chosenTemplate.name : 'Send a Template'}
+              {chosenTemplate ? chosenTemplate.name : 'Send an FB Template'}
             </Text>
 
             {loadingTemplates ? (
-              <ActivityIndicator color={C.accent} style={styles.modalLoader} />
+              <ActivityIndicator color={WA.accent} style={styles.modalLoader} />
             ) : chosenTemplate ? (
               <ScrollView style={styles.modalScroll}>
                 <Text style={styles.templateBody}>{chosenTemplate.body_text}</Text>
@@ -2059,7 +2507,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                     key={i}
                     style={styles.modalInput}
                     placeholder={`Value for {{${i + 1}}}`}
-                    placeholderTextColor={C.textSecondary}
+                    placeholderTextColor={WA.textMuted}
                     value={value}
                     onChangeText={next =>
                       setVariables(prev =>
@@ -2147,7 +2595,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
 
             {savedMode === 'list' ? (
               loadingReplies ? (
-                <ActivityIndicator color={C.accent} style={styles.modalLoader} />
+                <ActivityIndicator color={WA.accent} style={styles.modalLoader} />
               ) : (
                 <ScrollView style={styles.modalScroll}>
                   {replies.length === 0 ? (
@@ -2234,7 +2682,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                 <TextInput
                   style={styles.modalInput}
                   placeholder="Name, e.g. Price list"
-                  placeholderTextColor={C.textSecondary}
+                  placeholderTextColor={WA.textMuted}
                   value={replyTitle}
                   onChangeText={setReplyTitle}
                 />
@@ -2242,7 +2690,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                 <TextInput
                   style={styles.modalInput}
                   placeholder="Shortcut, e.g. price (optional)"
-                  placeholderTextColor={C.textSecondary}
+                  placeholderTextColor={WA.textMuted}
                   autoCapitalize="none"
                   value={replyShortcut}
                   onChangeText={setReplyShortcut}
@@ -2251,7 +2699,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                 <TextInput
                   style={[styles.modalInput, styles.modalInputTall]}
                   placeholder="Message text"
-                  placeholderTextColor={C.textSecondary}
+                  placeholderTextColor={WA.textMuted}
                   multiline
                   value={replyBody}
                   onChangeText={setReplyBody}
@@ -2352,167 +2800,101 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
         </View>
       </Modal>
       <Modal
-        visible={catalogOpen}
+        visible={productsOpen}
         transparent
         animationType="fade"
-        onRequestClose={() => setCatalogOpen(false)}
+        onRequestClose={() => setProductsOpen(false)}
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
-              {catalogMode === 'catalog' ? 'Send catalog' : 'Send products'}
-            </Text>
-
-            {canCatalog && canProducts && (
-              <View style={styles.segmentRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.segment,
-                    catalogMode === 'catalog' && styles.segmentOn,
-                  ]}
-                  onPress={() => setCatalogMode('catalog')}
-                >
-                  <Text
-                    style={[
-                      styles.segmentText,
-                      catalogMode === 'catalog' && styles.segmentTextOn,
-                    ]}
-                  >
-                    Whole catalog
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.segment,
-                    catalogMode === 'products' && styles.segmentOn,
-                  ]}
-                  onPress={() => {
-                    setCatalogMode('products');
-                    if (products.length === 0) loadProducts('');
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.segmentText,
-                      catalogMode === 'products' && styles.segmentTextOn,
-                    ]}
-                  >
-                    Pick products
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            <Text style={styles.modalTitle}>Send product</Text>
 
             <ScrollView style={styles.modalScroll}>
-              {catalogMode === 'products' && (
-                <>
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="Heading, e.g. Our picks for you"
-                    placeholderTextColor={C.textSecondary}
-                    value={productHeader}
-                    onChangeText={setProductHeader}
-                  />
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Search products by name or code"
+                placeholderTextColor={WA.textMuted}
+                value={productSearch}
+                onChangeText={term => {
+                  setProductSearch(term);
+                  loadProducts(term);
+                }}
+              />
 
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="Search products by name or code"
-                    placeholderTextColor={C.textSecondary}
-                    value={productSearch}
-                    onChangeText={term => {
-                      setProductSearch(term);
-                      loadProducts(term);
-                    }}
-                  />
+              {loadingProducts ? (
+                <ActivityIndicator color={WA.accent} style={styles.modalLoader} />
+              ) : products.length === 0 ? (
+                <Text style={styles.modalHint}>No products match that.</Text>
+              ) : (
+                products.map(product => {
+                  const picked = chosenProducts.includes(product.id);
 
-                  {loadingProducts ? (
-                    <ActivityIndicator color={C.accent} style={styles.modalLoader} />
-                  ) : products.length === 0 ? (
-                    <Text style={styles.modalHint}>No products match that.</Text>
-                  ) : (
-                    products.map(product => {
-                      const picked = chosenProducts.includes(product.id);
+                  return (
+                    <TouchableOpacity
+                      key={product.id}
+                      style={[styles.prodRow, picked && styles.prodRowOn]}
+                      onPress={() => toggleProduct(product.id)}
+                    >
+                      {product.image ? (
+                        <Image
+                          source={{ uri: product.image }}
+                          style={styles.prodThumb}
+                        />
+                      ) : (
+                        <View style={[styles.prodThumb, styles.shortcutThumbEmpty]} />
+                      )}
 
-                      return (
-                        <TouchableOpacity
-                          key={product.id}
-                          style={[styles.prodRow, picked && styles.prodRowOn]}
-                          onPress={() => toggleProduct(product.id)}
-                        >
-                          {product.image ? (
-                            <Image
-                              source={{ uri: product.image }}
-                              style={styles.prodThumb}
-                            />
-                          ) : (
-                            <View style={[styles.prodThumb, styles.shortcutThumbEmpty]} />
-                          )}
+                      <View style={styles.shortcutMeta}>
+                        <Text style={styles.replyTitle} numberOfLines={1}>
+                          {product.product_name}
+                        </Text>
+                        <Text style={styles.shortcutBody} numberOfLines={1}>
+                          {product.product_code}
+                          {product.selling_price
+                            ? ` \u00b7 Rs. ${product.selling_price}`
+                            : ''}
+                        </Text>
+                      </View>
 
-                          <View style={styles.shortcutMeta}>
-                            <Text style={styles.replyTitle} numberOfLines={1}>
-                              {product.product_name}
-                            </Text>
-                            <Text style={styles.shortcutBody} numberOfLines={1}>
-                              {product.product_code}
-                              {product.selling_price
-                                ? ` \u00b7 Rs. ${product.selling_price}`
-                                : ''}
-                            </Text>
-                          </View>
-
-                          <Text style={styles.prodTick}>{picked ? '✓' : ''}</Text>
-                        </TouchableOpacity>
-                      );
-                    })
-                  )}
-                </>
+                      <Text style={styles.prodTick}>{picked ? '✓' : ''}</Text>
+                    </TouchableOpacity>
+                  );
+                })
               )}
 
               <TextInput
                 style={[styles.modalInput, styles.modalInputTall]}
-                placeholder="Message text"
-                placeholderTextColor={C.textSecondary}
+                placeholder="Your message (optional)"
+                placeholderTextColor={WA.textMuted}
                 multiline
-                value={catalogBody}
-                onChangeText={setCatalogBody}
-              />
-
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Footer (optional)"
-                placeholderTextColor={C.textSecondary}
-                value={catalogFooter}
-                onChangeText={setCatalogFooter}
+                value={productNote}
+                onChangeText={setProductNote}
               />
 
               <Text style={styles.modalHint}>
-                {catalogMode === 'catalog'
-                  ? 'Sends the commerce catalog connected to this WhatsApp number, which the customer can browse in the chat.'
-                  : 'Products must exist in the connected catalog under the same product codes, otherwise WhatsApp rejects the list.'}
+                Each product goes as its own picture with the name, code and price
+                underneath. Your message, if you write one, is sent first.
               </Text>
             </ScrollView>
 
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.modalCancel}
-                onPress={() => setCatalogOpen(false)}
+                onPress={() => setProductsOpen(false)}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.modalPrimary, sending && styles.disabled]}
-                onPress={catalogMode === 'catalog' ? sendCatalog : sendProducts}
+                onPress={sendProducts}
                 disabled={sending}
               >
                 {sending ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.modalPrimaryText}>
-                    {catalogMode === 'catalog'
-                      ? 'Send'
-                      : `Send${chosenProducts.length ? ` (${chosenProducts.length})` : ''}`}
+                    {`Send${chosenProducts.length ? ` (${chosenProducts.length})` : ''}`}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -2524,8 +2906,8 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ECE5DD' },
+const makeStyles = T => StyleSheet.create({
+  container: { flex: 1, backgroundColor: T.chatBg },
   listContent: { padding: 12 },
   bubbleRow: { flexDirection: 'row', marginBottom: 8 },
   rowOut: { justifyContent: 'flex-end' },
@@ -2536,85 +2918,131 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
-  bubbleOut: { backgroundColor: '#DCF8C6' },
-  bubbleIn: { backgroundColor: '#FFFFFF' },
-  bubbleFlash: { backgroundColor: '#FFF3C4' },
-  body: { fontSize: 14.5, color: '#111B21' },
-  deleted: { fontSize: 14, color: C.textSecondary, fontStyle: 'italic' },
-  link: { fontSize: 14.5, color: C.accent, textDecorationLine: 'underline' },
-  inlineLink: { color: '#027eb5', textDecorationLine: 'underline' },
+  attachBackdrop: {
+    flex: 1,
+    backgroundColor: T.backdrop,
+    justifyContent: 'flex-end',
+  },
+  attachPanel: {
+    backgroundColor: T.panel,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingTop: 10,
+    paddingHorizontal: 12,
+  },
+  // The little handle at the top of a bottom sheet.
+  attachGrab: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: T.divider,
+    marginBottom: 18,
+  },
+  attachGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  // Four to a row, so a fifth and sixth tile wrap into a second row the way
+  // WhatsApp's sheet does.
+  attachTile: {
+    width: '25%',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  // A rounded chip rather than a circle, matching WhatsApp's current sheet.
+  attachCircle: {
+    width: 68,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: T.panelAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attachLabel: {
+    marginTop: 7,
+    fontSize: 12,
+    color: T.textMuted,
+    textAlign: 'center',
+  },
+  bubbleOut: { backgroundColor: T.bubbleOut },
+  bubbleIn: { backgroundColor: T.bubbleIn },
+  bubbleFlash: { backgroundColor: T.bubbleFlash },
+  body: { fontSize: 14.5, color: T.text },
+  deleted: { fontSize: 14, color: T.textMuted, fontStyle: 'italic' },
+  link: { fontSize: 14.5, color: T.accent, textDecorationLine: 'underline' },
+  inlineLink: { color: T.accent, textDecorationLine: 'underline' },
   quote: {
     borderLeftWidth: 3,
-    borderLeftColor: '#25D366',
+    borderLeftColor: T.badge,
     backgroundColor: 'rgba(0,0,0,0.05)',
     borderRadius: 4,
     paddingHorizontal: 7,
     paddingVertical: 4,
     marginBottom: 4,
   },
-  quoteWho: { fontSize: 11.5, fontWeight: '700', color: '#25D366' },
-  quoteBody: { fontSize: 12, color: '#54656F' },
+  quoteWho: { fontSize: 11.5, fontWeight: '700', color: T.badge },
+  quoteBody: { fontSize: 12, color: T.textMuted },
   replyBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: C.surface,
+    backgroundColor: T.panel,
     borderTopWidth: 1,
-    borderTopColor: C.border,
+    borderTopColor: T.divider,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   replyBarMeta: { flex: 1, minWidth: 0 },
   replyBarX: { paddingHorizontal: 10 },
-  replyBarXText: { fontSize: 20, color: C.textSecondary },
+  replyBarXText: { fontSize: 20, color: T.textMuted },
   sheetBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: T.backdrop,
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: C.surface,
+    backgroundColor: T.panel,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingVertical: 8,
   },
   sheetItem: { paddingHorizontal: 20, paddingVertical: 14 },
-  sheetText: { fontSize: 15, color: C.text },
+  sheetText: { fontSize: 15, color: T.text },
   sheetDanger: { fontSize: 15, color: C.danger },
-  sheetDivider: { height: 1, backgroundColor: C.divider, marginVertical: 6 },
+  sheetDivider: { height: 1, backgroundColor: T.divider, marginVertical: 6 },
   reactionRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingVertical: 10,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: C.divider,
+    borderBottomColor: T.divider,
   },
   reactionBtn: { padding: 8, borderRadius: 20 },
-  reactionBtnOn: { backgroundColor: '#DCF8C6' },
+  reactionBtnOn: { backgroundColor: T.bubbleOut },
   reactionEmoji: { fontSize: 24 },
   recBar: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: C.bgAlt,
+    backgroundColor: T.panelAlt,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   recDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#E53E3E' },
-  recTime: { fontSize: 14, fontWeight: '700', color: C.text },
-  recHint: { fontSize: 12.5, color: C.textSecondary },
-  recCancel: { fontSize: 20, color: C.danger },
+  recTime: { fontSize: 14, fontWeight: '700', color: T.text },
+  recHint: { fontSize: 12.5, color: T.textMuted },
   locateBtn: {
     borderWidth: 1,
-    borderColor: C.accent,
+    borderColor: T.accent,
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: 'center',
     marginBottom: 8,
   },
-  locateBtnText: { color: C.accent, fontWeight: '600', fontSize: 13.5 },
+  locateBtnText: { color: T.accent, fontWeight: '600', fontSize: 13.5 },
   adCard: {
     flexDirection: 'row',
     alignSelf: 'stretch',
@@ -2625,22 +3053,22 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: 'rgba(0,0,0,0.04)',
     borderLeftWidth: 3,
-    borderLeftColor: '#25D366',
+    borderLeftColor: T.badge,
     borderRadius: 6,
     padding: 6,
     marginBottom: 6,
   },
   adThumb: { width: 52, height: 52, borderRadius: 4 },
   adMeta: { flex: 1, minWidth: 0 },
-  adTag: { fontSize: 10, fontWeight: '700', color: '#25D366', letterSpacing: 0.3 },
+  adTag: { fontSize: 10, fontWeight: '700', color: T.badge, letterSpacing: 0.3 },
   adHeadline: {
     fontSize: 12.5,
     fontWeight: '600',
-    color: '#111B21',
+    color: T.text,
     marginTop: 1,
   },
-  adBody: { fontSize: 11.5, color: '#54656F', marginTop: 1 },
-  adLink: { fontSize: 11, color: '#027EB5', fontWeight: '600', marginTop: 3 },
+  adBody: { fontSize: 11.5, color: T.textMuted, marginTop: 1 },
+  adLink: { fontSize: 11, color: T.accent, fontWeight: '600', marginTop: 3 },
   media: { width: 200, height: 200, borderRadius: 8, marginBottom: 4 },
   mediaWrap: { position: 'relative' },
   pinBar: {
@@ -2649,14 +3077,12 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    backgroundColor: '#FFF8E1',
+    backgroundColor: T.panelAlt,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#F0E2B0',
+    borderTopColor: T.divider,
   },
-  pinIcon: { fontSize: 13 },
-  pinText: { flex: 1, minWidth: 0, fontSize: 12.5, color: '#54656F' },
+  pinText: { flex: 1, minWidth: 0, fontSize: 12.5, color: T.textMuted },
   pinCount: { fontSize: 11, fontWeight: '700', color: '#B58900' },
-  metaFlag: { fontSize: 10, marginRight: 3 },
   fileCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2675,13 +3101,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 6,
-    backgroundColor: '#25D366',
+    backgroundColor: T.badge,
     alignItems: 'center',
     justifyContent: 'center',
   },
   fileBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
-  fileName: { fontSize: 13.5, fontWeight: '600', color: '#111B21' },
-  fileSub: { fontSize: 11, color: '#54656F', marginTop: 1 },
+  fileName: { fontSize: 13.5, fontWeight: '600', color: T.text },
+  fileSub: { fontSize: 11, color: T.textMuted, marginTop: 1 },
   fileRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 200 },
   fileOpen: { flex: 1, minWidth: 0 },
   fileDl: {
@@ -2692,7 +3118,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fileDlIcon: { fontSize: 15, fontWeight: '700', color: '#54656F', lineHeight: 18 },
+  fileDlIcon: { fontSize: 15, fontWeight: '700', color: T.textMuted, lineHeight: 18 },
   mediaDl: {
     position: 'absolute',
     top: 6,
@@ -2713,54 +3139,57 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   reaction: { fontSize: 13 },
-  time: { fontSize: 10.5, color: '#667781' },
-  tick: { fontSize: 11, color: '#667781' },
-  tickRead: { color: '#53BDEB' },
-  tickFailed: { color: C.danger },
+  time: { fontSize: 10.5, color: T.textMuted },
+  // Ticks are icons now; only the timestamp beside them is text.
   list: { flex: 1 },
   composerWrap: {
-    backgroundColor: C.surface,
+    backgroundColor: T.panel,
     borderTopWidth: 1,
-    borderTopColor: C.border,
+    borderTopColor: T.divider,
     paddingHorizontal: 8,
     paddingTop: 4,
     paddingBottom: 8,
   },
-  optionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingVertical: 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.divider,
-    marginBottom: 6,
-  },
-  optionBtn: { alignItems: 'center', paddingHorizontal: 10, paddingVertical: 2 },
   composerRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
   },
+  // Negative margins cancel the composer's padding so the panel runs to the
+  // screen edges, the way the keyboard it stands in for does.
+  emojiWrap: {
+    marginTop: 6,
+    marginHorizontal: -8,
+    marginBottom: -8,
+  },
+  emojiSafe: { backgroundColor: T.panelAlt },
+  inputPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: T.panelAlt,
+    borderRadius: 26,
+    paddingHorizontal: 6,
+    // Caps the height so a long message scrolls inside the pill instead of
+    // pushing the thread off the screen.
+    maxHeight: 120,
+  },
+  pillIcon: {
+    width: 38,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: 8,
-    backgroundColor: C.surface,
+    backgroundColor: T.panel,
     borderTopWidth: 1,
-    borderTopColor: C.border,
+    borderTopColor: T.divider,
     gap: 8,
   },
-  segmentRow: {
-    flexDirection: 'row',
-    backgroundColor: C.bgAlt,
-    borderRadius: 8,
-    padding: 3,
-    marginBottom: 10,
-  },
-  segment: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 6 },
-  segmentOn: { backgroundColor: C.surface },
-  segmentText: { fontSize: 13, fontWeight: '600', color: C.textSecondary },
-  segmentTextOn: { color: C.accent },
   prodRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2769,15 +3198,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     borderRadius: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.divider,
+    borderBottomColor: T.divider,
   },
-  prodRowOn: { backgroundColor: C.accentLight },
+  prodRowOn: { backgroundColor: T.accentLight },
   prodThumb: { width: 44, height: 44, borderRadius: 6 },
-  prodTick: { fontSize: 16, fontWeight: '700', color: C.accent, width: 18 },
+  prodTick: { fontSize: 16, fontWeight: '700', color: T.accent, width: 18 },
   shortcutPop: {
-    backgroundColor: C.surface,
+    backgroundColor: T.panel,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: C.border,
+    borderTopColor: T.divider,
     paddingHorizontal: 8,
     paddingTop: 6,
   },
@@ -2787,36 +3216,36 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.divider,
+    borderBottomColor: T.divider,
   },
   shortcutThumb: { width: 34, height: 34, borderRadius: 6 },
-  shortcutThumbEmpty: { backgroundColor: C.bgAlt },
+  shortcutThumbEmpty: { backgroundColor: T.panelAlt },
   shortcutMeta: { flex: 1, minWidth: 0 },
   shortcutTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   shortcutTitle: {
     flexShrink: 1,
     fontSize: 13.5,
     fontWeight: '700',
-    color: C.textPrimary,
+    color: T.text,
   },
   shortcutTag: {
     fontSize: 11,
     fontWeight: '700',
-    color: C.accent,
-    backgroundColor: C.accentLight,
+    color: T.accent,
+    backgroundColor: T.accentLight,
     borderRadius: 4,
     paddingHorizontal: 5,
     paddingVertical: 1,
     alignSelf: 'flex-start',
   },
-  shortcutBody: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
+  shortcutBody: { fontSize: 12, color: T.textMuted, marginTop: 2 },
   replyRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.divider,
+    borderBottomColor: T.divider,
   },
   replyRowMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   replyThumb: { width: 44, height: 44, borderRadius: 8 },
@@ -2824,10 +3253,10 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     fontSize: 14.5,
     fontWeight: '700',
-    color: C.textPrimary,
+    color: T.text,
   },
   replyRowBtn: { paddingHorizontal: 6, paddingVertical: 6 },
-  replyRowIcon: { fontSize: 16, color: C.textSecondary },
+  replyRowIcon: { fontSize: 16, color: T.textMuted },
   replyRowIconDanger: { color: C.danger },
   replyPreviewImg: {
     width: 140,
@@ -2863,58 +3292,54 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    backgroundColor: C.bgAlt,
+    backgroundColor: T.panelAlt,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: C.border,
+    borderTopColor: T.divider,
   },
-  uploadNoteText: { fontSize: 12.5, color: C.textSecondary, fontWeight: '600' },
+  uploadNoteText: { fontSize: 12.5, color: T.textMuted, fontWeight: '600' },
   attachBtn: { paddingHorizontal: 6, paddingVertical: 8 },
-  attachIcon: { fontSize: 20 },
   input: {
     flex: 1,
     maxHeight: 110,
-    backgroundColor: C.bgAlt,
-    borderRadius: 20,
-    paddingHorizontal: 14,
+    paddingHorizontal: 4,
     paddingVertical: 8,
     fontSize: 14.5,
-    color: C.text,
+    color: T.text,
   },
   sendBtn: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#25D366',
+    backgroundColor: T.badge,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendBtnDisabled: { opacity: 0.6 },
-  sendIcon: { color: '#fff', fontSize: 17 },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: T.backdrop,
     justifyContent: 'center',
     padding: 24,
   },
   modalCard: {
-    backgroundColor: C.surface,
+    backgroundColor: T.panel,
     borderRadius: 12,
     padding: 18,
     maxHeight: '80%',
   },
-  modalTitle: { fontSize: 17, fontWeight: '700', color: C.text, marginBottom: 12 },
+  modalTitle: { fontSize: 17, fontWeight: '700', color: T.text, marginBottom: 12 },
   modalScroll: { maxHeight: 340 },
   modalLoader: { marginVertical: 24 },
   modalInput: {
-    backgroundColor: C.bgAlt,
+    backgroundColor: T.panelAlt,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14.5,
-    color: C.text,
+    color: T.text,
     marginBottom: 10,
   },
-  modalHint: { fontSize: 12.5, color: C.textSecondary, marginVertical: 8 },
+  modalHint: { fontSize: 12.5, color: T.textMuted, marginVertical: 8 },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -2922,9 +3347,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   modalCancel: { paddingHorizontal: 14, paddingVertical: 10 },
-  modalCancelText: { color: C.textSecondary, fontWeight: '600' },
+  modalCancelText: { color: T.textMuted, fontWeight: '600' },
   modalPrimary: {
-    backgroundColor: '#25D366',
+    backgroundColor: T.badge,
     borderRadius: 8,
     paddingHorizontal: 20,
     paddingVertical: 10,
@@ -2936,38 +3361,57 @@ const styles = StyleSheet.create({
   templateRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: C.divider,
+    borderBottomColor: T.divider,
   },
-  templateName: { fontWeight: '600', fontSize: 14.5, color: C.text },
-  templateMeta: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
+  templateName: { fontWeight: '600', fontSize: 14.5, color: T.text },
+  templateMeta: { fontSize: 12, color: T.textMuted, marginTop: 2 },
   templateBody: {
     fontSize: 13.5,
-    color: C.textSecondary,
+    color: T.textMuted,
     marginBottom: 12,
     lineHeight: 19,
   },
-  headerRow: { flexDirection: 'row' },
-  headerBtn: { paddingHorizontal: 8, paddingVertical: 6 },
-  headerIcon: { fontSize: 17 },
+  headerTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    // Leaves the back arrow its room and keeps a long name off the icons.
+    maxWidth: 200,
+  },
+  headerName: {
+    flexShrink: 1,
+    color: '#fff',
+    fontSize: 17,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
+    marginRight: 14,
+  },
   tabRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: C.divider,
+    borderBottomColor: T.divider,
     marginBottom: 10,
   },
   tab: { paddingHorizontal: 14, paddingVertical: 8 },
-  tabActive: { borderBottomWidth: 2, borderBottomColor: '#25D366' },
-  tabText: { color: C.textSecondary, fontSize: 13.5 },
-  tabTextActive: { color: '#25D366', fontWeight: '700' },
+  tabActive: { borderBottomWidth: 2, borderBottomColor: T.badge },
+  tabText: { color: T.textMuted, fontSize: 13.5 },
+  tabTextActive: { color: T.badge, fontWeight: '700' },
   mediaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  thumb: { width: 92, height: 92, borderRadius: 6, backgroundColor: C.bgAlt },
-  searchWhen: { fontSize: 11, color: C.textSecondary, marginTop: 2 },
+  thumb: { width: 92, height: 92, borderRadius: 6, backgroundColor: T.panelAlt },
+  searchWhen: { fontSize: 11, color: T.textMuted, marginTop: 2 },
   noPermission: {
     textAlign: 'center',
-    color: C.textSecondary,
+    color: T.textMuted,
     padding: 16,
-    backgroundColor: C.surface,
+    backgroundColor: T.panel,
   },
 });
+
+// Built once each, not per render.
+const LIGHT_STYLES = makeStyles(WA_LIGHT);
+const DARK_STYLES = makeStyles(WA_DARK);
 
 export default WhatsAppThreadScreen;

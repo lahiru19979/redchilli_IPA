@@ -361,6 +361,11 @@ export const whatsappAPI = {
   // mode: 'share' (needs latitude/longitude) or 'request'
   sendLocation: payload => apiClient.post('/whatsapp/send-location', payload),
 
+  // Reads a pasted Google Maps link into a pin. Short links have to be followed
+  // to find out where they point, which only the server can do.
+  resolveLocation: url =>
+    apiClient.post('/whatsapp/resolve-location', { url }),
+
   // Per-message pin and star. Omit `value` to flip whatever the message is now.
   pinMessage: (messageId, value) =>
     apiClient.post(`/whatsapp/messages/${messageId}/pin`, { value }),
@@ -379,6 +384,11 @@ export const whatsappAPI = {
   deleteMessage: (messageId, scope) =>
     apiClient.delete(`/whatsapp/messages/${messageId}`, { params: { scope } }),
 
+  // Send an outbound message again, to the same chat. The server writes a new
+  // row, so the failed attempt stays in the thread above it.
+  resend: messageId =>
+    apiClient.post(`/whatsapp/messages/${messageId}/resend`),
+
   forward: (messageId, customerIds) =>
     apiClient.post('/whatsapp/forward', {
       message_id: messageId,
@@ -392,23 +402,16 @@ export const whatsappAPI = {
     apiClient.get(`/whatsapp/chats/${customerId}/media`),
 
   // Sends the whole connected commerce catalog as one browsable message.
-  sendCatalog: (customerId, body, footer = '') =>
-    apiClient.post('/whatsapp/send-catalog', {
-      customer_id: customerId,
-      body,
-      footer,
-    }),
-
   searchProducts: (q = '') =>
     apiClient.get('/whatsapp/product-search', { params: { q } }),
 
-  sendProducts: (customerId, productIds, header, body, footer = '') =>
+  // One picture message per product, plus the agent's own line first if they
+  // wrote one. Answers with a `messages` array, not a single message.
+  sendProducts: (customerId, productIds, body = '') =>
     apiClient.post('/whatsapp/send-products', {
       customer_id: customerId,
       product_ids: productIds,
-      header,
       body,
-      footer,
     }),
 
   // Saved replies: the agent's own canned messages, shared with the web CRM.

@@ -82,7 +82,7 @@ android {
        applicationId "com.redchilli.rcmerchant"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-       versionCode 14
+       versionCode 16
         versionName "0.0.1"
     }
     signingConfigs {

@@ -1,3 +1,5 @@
+import { useColorScheme } from 'react-native';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // App-wide design tokens. Every screen should import `C` from here instead of
 // hardcoding hex values, so the whole app shares one consistent look.
@@ -40,6 +42,81 @@ export const C = {
   textPlaceholder: '#A0AEC0',
   textInverse: '#FFFFFF',
 };
+
+// WhatsApp's own palette, for the CRM's chat screens only. Kept apart from C so
+// the rest of the app keeps the RedChilli blue — only the messaging surface is
+// meant to feel like WhatsApp.
+//
+// Two variants with identical keys, so a screen can swap the whole palette in
+// one assignment instead of testing the scheme at every colour.
+export const WA_LIGHT = {
+  dark: false,
+  green: '#00A884',
+  greenDark: '#008069',
+  teal: '#128C7E',
+  bubbleOut: '#D9FDD3',
+  bubbleIn: '#FFFFFF',
+  bubbleFlash: '#FFF3C4',
+  chatBg: '#EFE7DE',
+  panel: '#FFFFFF',
+  panelAlt: '#F7F8FA',
+  divider: '#E9EDEF',
+  icon: '#54656F',
+  iconMuted: '#8696A0',
+  text: '#111B21',
+  textMuted: '#667781',
+  tick: '#8696A0',
+  tickRead: '#53BDEB',
+  badge: '#25D366',
+  // Selected filter pills and the reaction row.
+  chipOn: '#D9FDD3',
+  chipOnText: '#0F5C43',
+  accent: '#1565C0',
+  accentLight: '#E3F2FD',
+  backdrop: 'rgba(0,0,0,0.4)',
+  headerBg: '#007AFF',
+};
+
+export const WA_DARK = {
+  dark: true,
+  green: '#00A884',
+  greenDark: '#005C4B',
+  teal: '#00A884',
+  // WhatsApp's dark bubbles: a deep green for ours, slate for theirs.
+  bubbleOut: '#005C4B',
+  bubbleIn: '#202C33',
+  bubbleFlash: '#3B3218',
+  chatBg: '#0B141A',
+  panel: '#111B21',
+  panelAlt: '#202C33',
+  divider: '#222D34',
+  icon: '#AEBAC1',
+  iconMuted: '#8696A0',
+  text: '#E9EDEF',
+  // Lighter than WhatsApp's own #8696A0: this also has to carry the
+  // timestamps sitting on our green outgoing bubbles, where #8696A0
+  // measures 2.6:1 — unreadable. #B7C6CC clears 4.5:1 on both.
+  textMuted: '#B7C6CC',
+  tick: '#8696A0',
+  tickRead: '#53BDEB',
+  badge: '#00A884',
+  chipOn: '#005C4B',
+  chipOnText: '#D9FDD3',
+  accent: '#53BDEB',
+  accentLight: '#182C36',
+  backdrop: 'rgba(0,0,0,0.6)',
+  headerBg: '#1F2C34',
+};
+
+// Existing imports of WA keep working; they get the light palette.
+export const WA = WA_LIGHT;
+
+/**
+ * The palette matching the phone's current appearance setting.
+ * Re-renders on its own when the user flips the system theme.
+ */
+export const useWaTheme = () =>
+  useColorScheme() === 'dark' ? WA_DARK : WA_LIGHT;
 
 // Spacing scale (multiples of 4) — optional helper for consistent gaps/padding.
 export const SPACING = {
