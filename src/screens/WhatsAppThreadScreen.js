@@ -32,6 +32,7 @@ import ImagePicker from 'react-native-image-crop-picker';
 // throws at module scope and takes the whole bundle down with it.
 import audioRecorder from 'react-native-audio-recorder-player';
 import Geolocation from '@react-native-community/geolocation';
+import RNBlobUtil from 'react-native-blob-util';
 import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { whatsappAPI, MEDIA_BASE_URL } from '../api/apiClient';
@@ -85,6 +86,46 @@ const fileLabel = item => {
   );
 };
 
+// What to call the file once it is on the phone. The signed download link has
+// no filename in it, so the name comes from the message, and the extension from
+// the stored media path.
+const downloadName = (meta, url) => {
+  const tail = decodeURIComponent(
+    String(url || '').split('?')[0].split('/').pop() || '',
+  );
+  const dot = tail.lastIndexOf('.');
+  const ext = dot > 0 ? tail.slice(dot) : '';
+
+  if (meta?.filename) return meta.filename;
+  if (meta?.name) return meta.name;
+  // A voice note is stored under a timestamp, which is no use in a file list.
+  if (meta?.type === 'audio') return `voice_${meta.id || Date.now()}${ext || '.m4a'}`;
+
+  return tail || `file_${Date.now()}${ext}`;
+};
+
+// Android needs to be told what a file is before it will hand it to a player
+// or a viewer; the extension is all we have to go on.
+const MIME_BY_EXT = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  mp4: 'video/mp4',
+  '3gp': 'video/3gpp',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  mp3: 'audio/mpeg',
+  ogg: 'audio/ogg',
+  opus: 'audio/ogg',
+  wav: 'audio/wav',
+  pdf: 'application/pdf',
+};
+
+const mimeFor = path =>
+  MIME_BY_EXT[String(path).split('.').pop().toLowerCase()] || '*/*';
+
 // "[image]", "[document]" and friends are placeholders WhatsApp sends in place
 // of a caption. Printing them under the attachment is just noise.
 const isPlaceholderBody = body => !body || /^\[.*\]$/.test(body.trim());
@@ -124,6 +165,14 @@ const HEADER_ITEMS = [
     color: '#5D5FEF',
     enabled: () => true,
     run: a => a.openMedia(),
+  },
+  {
+    id: 'labels',
+    label: 'Labels',
+    icon: 'label',
+    color: '#B4711E',
+    enabled: () => true,
+    run: a => a.openLabels(),
   },
 ];
 
@@ -303,9 +352,53 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
   const [forwardPicked, setForwardPicked] = useState([]);
   const [forwardSearch, setForwardSearch] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
+
+  // The customer's labels, so a chat can be tagged without going back to the
+  // list and hunting for the row.
+  const [labelsOpen, setLabelsOpen] = useState(false);
+  const [labels, setLabels] = useState([]);
+  const [appliedLabels, setAppliedLabels] = useState([]);
+  const [labelBusy, setLabelBusy] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
 
   const [uploadNote, setUploadNote] = useState('');
+  // The photo being looked at full screen: the set it belongs to and which one
+  // of them, so the arrows have somewhere to go.
+  const [viewing, setViewing] = useState(null);
+
+  const openViewer = (list, index) => {
+    if (!list.length || index < 0) return;
+    setViewing({ list, index });
+  };
+
+  const stepViewer = by =>
+    setViewing(current => {
+      if (!current) return current;
+
+      const next = current.index + by;
+      return next < 0 || next >= current.list.length
+        ? current
+        : { ...current, index: next };
+    });
+
+  // Which voice note is playing, and how far through. One at a time: the
+  // recorder library holds a single player.
+  const [playingId, setPlayingId] = useState(null);
+  const [playPos, setPlayPos] = useState(0);
+  const [playDur, setPlayDur] = useState(0);
+
+  // message id -> where the file landed on this phone, so a downloaded
+  // attachment offers to play or open rather than to download again.
+  const [savedFiles, setSavedFiles] = useState({});
+  const checkedRef = useRef(new Set());
+
+  // Whether the note is work in progress (spinner) or a finished result.
+  const [noteBusy, setNoteBusy] = useState(true);
+
+  const showNote = (note, busy = true) => {
+    setNoteBusy(busy);
+    setUploadNote(note);
+  };
 
   // Product picker.
   const [productsOpen, setProductsOpen] = useState(false);
@@ -614,7 +707,7 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
     for (let i = 0; i < files.length; i += 1) {
       const image = files[i];
 
-      setUploadNote(
+      showNote(
         files.length > 1 ? `Sending photo ${i + 1} of ${files.length}…` : 'Sending photo…',
       );
 
@@ -668,14 +761,125 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
     }
   };
 
-  // Handing the URL to the system browser puts the file through Android's
-  // download manager (and iOS's share sheet), which saves it and shows the usual
-  // notification. Saving straight into the gallery would need a filesystem
-  // module and another native build, which this does not.
-  // Prefer the signed download link: it streams the file with a
-  // Content-Disposition header, which is the only way the browser learns the
-  // real filename. Opening the plain media URL saves it under the stored hash.
-  const downloadFile = (downloadUrl, mediaUrl) => {
+  // A file downloaded in an earlier session is still on the phone, so the
+  // bubbles have to find it again rather than offering to fetch it twice.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const pending = messages.filter(
+      m => m.media_url && !checkedRef.current.has(m.id),
+    );
+
+    if (!pending.length) return;
+    pending.forEach(m => checkedRef.current.add(m.id));
+
+    (async () => {
+      const found = {};
+
+      for (const message of pending) {
+        const path = `${RNBlobUtil.fs.dirs.DownloadDir}/${downloadName(
+          message,
+          message.media_url,
+        )}`;
+
+        try {
+          if (await RNBlobUtil.fs.exists(path)) found[message.id] = path;
+        } catch (error) {
+          // An unreadable path just means "not downloaded".
+        }
+      }
+
+      if (Object.keys(found).length) setSavedFiles(prev => ({ ...prev, ...found }));
+    })();
+  }, [messages]);
+
+  const threadPhotos = useMemo(
+    () => messages.filter(m => m.type === 'image' && m.media_url && !m.deleted),
+    [messages],
+  );
+
+  const stopPlayback = useCallback(async () => {
+    try {
+      await audioRecorder.stopPlayer();
+    } catch (error) {
+      // Already stopped, which is the state we wanted anyway.
+    }
+
+    audioRecorder.removePlayBackListener();
+    audioRecorder.removePlaybackEndListener();
+    setPlayingId(null);
+    setPlayPos(0);
+    setPlayDur(0);
+  }, []);
+
+  // Leaving the chat mid-message would otherwise keep playing over whatever
+  // screen comes next.
+  useEffect(() => () => {
+    audioRecorder.removePlayBackListener();
+    audioRecorder.removePlaybackEndListener();
+    audioRecorder.stopPlayer().catch(() => {});
+  }, []);
+
+  // Plays the voice note in the thread. The downloaded copy is used when there
+  // is one — no second trip over the network for a message already on the
+  // phone — otherwise it streams from the server.
+  const playVoice = async item => {
+    // The recorder and the player are the same native object; recording wins.
+    if (recording) return;
+
+    if (playingId === item.id) {
+      await stopPlayback();
+      return;
+    }
+
+    if (playingId) await stopPlayback();
+
+    const local = savedFiles[item.id];
+    const source = local ? `file://${local}` : item.media_url;
+    if (!source) return;
+
+    try {
+      setPlayingId(item.id);
+      setPlayPos(0);
+      setPlayDur(0);
+      // Often enough for the counter to look live, rarely enough not to
+      // re-render the thread five times a second.
+      audioRecorder.setSubscriptionDuration(0.25);
+      audioRecorder.addPlayBackListener(meta => {
+        setPlayPos(meta.currentPosition);
+        setPlayDur(meta.duration);
+      });
+      audioRecorder.addPlaybackEndListener(() => {
+        stopPlayback();
+      });
+
+      await audioRecorder.startPlayer(source);
+    } catch (error) {
+      await stopPlayback();
+      Alert.alert('Could not play', 'This voice message could not be played.');
+    }
+  };
+
+  // Hands the file to whatever app on the phone handles that kind — the
+  // gallery for a photo, a viewer for a document.
+  const openSaved = async path => {
+    try {
+      await RNBlobUtil.android.actionViewIntent(path, mimeFor(path));
+    } catch (error) {
+      Alert.alert('Could not open', 'No app on this phone opens that file.');
+    }
+  };
+
+  // Saves the file from inside the app, the way WhatsApp does, rather than
+  // handing the link to the browser and throwing the agent out of the chat.
+  //
+  // Android's own DownloadManager does the work: it downloads in the
+  // background, puts the file in Downloads with the usual notification, and
+  // makes it visible to the Gallery. Nothing opens on top of the chat.
+  //
+  // Prefer the signed download link over the raw media URL: it streams the file
+  // under its real name rather than the hash it is stored as.
+  const downloadFile = async (downloadUrl, mediaUrl, meta) => {
     const url = downloadUrl || mediaUrl;
     if (!url) return;
 
@@ -686,14 +890,61 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
       ? url
       : `${MEDIA_BASE_URL}/${String(url).replace(/^\//, '')}`;
 
-    Linking.openURL(absolute).catch(() =>
-      Alert.alert(
-        'Could not download',
-        `No app on this phone can open:
+    if (Platform.OS !== 'android') {
+      // iOS has no DownloadManager; the share sheet is the way a file leaves
+      // an app there.
+      Linking.openURL(absolute).catch(() =>
+        Alert.alert('Could not download', `Nothing on this phone can open:
 
-${absolute}`,
-      ),
-    );
+${absolute}`),
+      );
+      return;
+    }
+
+    // Android 9 and below wrote to shared storage under a runtime permission;
+    // 10 and up do not ask at all.
+    if (Platform.Version <= 28) {
+      const granted = await request(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE);
+
+      if (granted !== RESULTS.GRANTED) {
+        Alert.alert(
+          'Storage permission needed',
+          'Allow storage access to save files to this phone.',
+        );
+        return;
+      }
+    }
+
+    const fileName = downloadName(meta, mediaUrl || url);
+    showNote(`Saving ${fileName}…`);
+
+    try {
+      await RNBlobUtil.config({
+        addAndroidDownloads: {
+          useDownloadManager: true,
+          notification: true,
+          title: fileName,
+          description: 'Saving from RedChilli CRM',
+          path: `${RNBlobUtil.fs.dirs.DownloadDir}/${fileName}`,
+          // Without this a saved photo never turns up in the Gallery.
+          mediaScannable: true,
+        },
+      }).fetch('GET', absolute);
+
+      if (meta?.id) {
+        setSavedFiles(prev => ({
+          ...prev,
+          [meta.id]: `${RNBlobUtil.fs.dirs.DownloadDir}/${fileName}`,
+        }));
+      }
+
+      showNote(`Saved ${fileName} to Downloads`, false);
+      // Long enough to read, short enough not to sit over the thread.
+      setTimeout(() => setUploadNote(''), 2500);
+    } catch (error) {
+      setUploadNote('');
+      Alert.alert('Could not download', `${fileName} could not be saved.`);
+    }
   };
 
   // Update one bubble in place, the way react() does for reactions.
@@ -1001,6 +1252,45 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
     }
   };
 
+  const loadLabels = useCallback(async () => {
+    try {
+      const res = await whatsappAPI.getLabels(customerId);
+      setLabels(res.data.labels || []);
+      setAppliedLabels((res.data.applied || []).map(String));
+    } catch (error) {
+      setLabels([]);
+    }
+  }, [customerId]);
+
+  const openLabels = () => {
+    setLabelsOpen(true);
+    loadLabels();
+  };
+
+  const toggleCustomerLabel = async label => {
+    if (labelBusy) return;
+
+    const on = appliedLabels.includes(String(label.id));
+    setLabelBusy(true);
+
+    // Flip it here first: the round trip is a poll away from showing anyway,
+    // and a tick that waits on the network feels broken.
+    setAppliedLabels(prev =>
+      on
+        ? prev.filter(id => id !== String(label.id))
+        : [...prev, String(label.id)],
+    );
+
+    try {
+      await whatsappAPI.toggleLabel(customerId, label.id, !on);
+    } catch (error) {
+      await loadLabels();
+      Alert.alert('Not saved', 'That label could not be changed.');
+    } finally {
+      setLabelBusy(false);
+    }
+  };
+
   const loadReplies = useCallback(async () => {
     setLoadingReplies(true);
 
@@ -1140,27 +1430,31 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
   };
 
   const sendSavedReply = async () => {
-    if (!activeReply || sending) return;
+    if (!activeReply) return;
 
-    setSending(true);
-    setUploadNote('Sending saved reply...');
+    const reply = activeReply;
+
+    // Out of the way first, then send. Holding the sheet open while Meta takes
+    // each photo made a saved reply feel slower than typing the message out.
+    setSavedOpen(false);
+    setActiveReply(null);
+    // The shortcut that triggered this is still sitting in the box otherwise.
+    if (text.trim().startsWith('/')) setText('');
+    showNote('Sending saved reply...');
 
     try {
-      const res = await whatsappAPI.sendSavedReply(customerId, activeReply.id);
+      const res = await whatsappAPI.sendSavedReply(customerId, reply.id);
       (res.data.messages || []).forEach(appendLocal);
-
-      setSavedOpen(false);
-      setActiveReply(null);
-      // The shortcut that triggered this is still sitting in the box otherwise.
-      if (text.trim().startsWith('/')) setText('');
     } catch (error) {
+      // The sheet is gone by now, so a failure has to say so out loud.
+      (error?.response?.data?.messages || []).forEach(appendLocal);
+
       Alert.alert(
         'Not sent',
         error?.response?.data?.message
           || 'WhatsApp rejected this reply. If the customer has not messaged in the last 24 hours, send an approved template first.',
       );
     } finally {
-      setSending(false);
       setUploadNote('');
     }
   };
@@ -1609,15 +1903,34 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
 
               {item.type === 'image' && item.media_url && (
                 <View style={styles.mediaWrap}>
-                  <Image source={{ uri: item.media_url }} style={styles.media} />
-
+                  {/* Tapping the picture opens it here, full screen, the way
+                      WhatsApp does — not in the phone's gallery app. */}
                   <TouchableOpacity
-                    style={styles.mediaDl}
-                    onPress={() => downloadFile(item.download_url, item.media_url)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    activeOpacity={0.9}
+                    onPress={() =>
+                      openViewer(
+                        threadPhotos,
+                        threadPhotos.findIndex(m => m.id === item.id),
+                      )
+                    }
+                    accessibilityLabel="Open photo"
                   >
-                    <Text style={styles.mediaDlIcon}>⤓</Text>
+                    <Image source={{ uri: item.media_url }} style={styles.media} />
                   </TouchableOpacity>
+
+                  {/* Nothing left to fetch once it is on the phone. */}
+                  {!savedFiles[item.id] && (
+                    <TouchableOpacity
+                      style={styles.mediaDl}
+                      onPress={() =>
+                        downloadFile(item.download_url, item.media_url, item)
+                      }
+                      accessibilityLabel="Download"
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={styles.mediaDlIcon}>⤓</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
 
@@ -1638,27 +1951,70 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
               {['document', 'audio', 'video'].includes(item.type) &&
                 item.media_url && (
                   <View style={styles.fileCard}>
-                    <View style={styles.fileBadge}>
-                      <Text style={styles.fileBadgeText}>{fileExt(item)}</Text>
-                    </View>
+                    {item.type === 'audio' ? (
+                      // A voice note plays here, in the bubble, the way it does
+                      // in WhatsApp — the round button on the left, not a
+                      // hand-off to whatever player the phone happens to have.
+                      <TouchableOpacity
+                        style={styles.voiceBtn}
+                        onPress={() => playVoice(item)}
+                        accessibilityLabel={
+                          playingId === item.id ? 'Pause' : 'Play voice message'
+                        }
+                      >
+                        <WaIcon
+                          name={playingId === item.id ? 'pause' : 'play'}
+                          size={18}
+                          color="#fff"
+                        />
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.fileBadge}>
+                        <Text style={styles.fileBadgeText}>{fileExt(item)}</Text>
+                      </View>
+                    )}
 
                     <TouchableOpacity
                       style={styles.fileOpen}
-                      onPress={() => Linking.openURL(item.media_url)}
+                      onPress={() =>
+                        item.type === 'audio'
+                          ? playVoice(item)
+                          : savedFiles[item.id]
+                            ? openSaved(savedFiles[item.id])
+                            : Linking.openURL(item.media_url)
+                      }
                     >
                       <Text style={styles.fileName} numberOfLines={2}>
                         {fileLabel(item)}
                       </Text>
-                      <Text style={styles.fileSub}>Tap to open</Text>
+                      <Text style={styles.fileSub}>
+                        {item.type === 'audio'
+                          ? playingId === item.id
+                            ? `${audioRecorder.mmss(
+                                Math.floor(playPos / 1000),
+                              )} / ${audioRecorder.mmss(
+                                Math.floor(playDur / 1000),
+                              )}`
+                            : 'Tap to play'
+                          : savedFiles[item.id]
+                            ? 'Saved · tap to open'
+                            : 'Tap to open'}
+                      </Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                      style={styles.fileDl}
-                      onPress={() => downloadFile(item.download_url, item.media_url)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Text style={styles.fileDlIcon}>⤓</Text>
-                    </TouchableOpacity>
+                    {/* Nothing left to fetch once it is on the phone. */}
+                    {!savedFiles[item.id] && (
+                      <TouchableOpacity
+                        style={styles.fileDl}
+                        onPress={() =>
+                          downloadFile(item.download_url, item.media_url, item)
+                        }
+                        accessibilityLabel="Download"
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Text style={styles.fileDlIcon}>⤓</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 )}
 
@@ -1685,6 +2041,21 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
             {out && renderTick(item.status)}
           </View>
         </TouchableOpacity>
+
+        {/* WhatsApp's own mark for a message that did not go: a red ! beside
+            the bubble, always visible, and tapping it sends the content again.
+            The long-press menu still has Resend, but a failure should not need
+            hunting for. */}
+        {out && item.status === 'failed' && item.forwardable && canSend && (
+          <TouchableOpacity
+            style={styles.failMark}
+            onPress={() => resendMessage(item)}
+            accessibilityLabel="Not delivered. Tap to send again."
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.failMarkText}>!</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -1797,7 +2168,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
 
       {!!uploadNote && (
         <View style={styles.uploadNote}>
-          <ActivityIndicator color={WA.accent} size="small" />
+          {noteBusy && <ActivityIndicator color={WA.accent} size="small" />}
           <Text style={styles.uploadNoteText}>{uploadNote}</Text>
         </View>
       )}
@@ -1943,7 +2314,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                     style={styles.attachTile}
                     onPress={() => {
                       setHeaderMenuOpen(false);
-                      tile.run({ openMedia, setSearchOpen });
+                      tile.run({ openMedia, setSearchOpen, openLabels });
                     }}
                   >
                     <View style={styles.attachCircle}>
@@ -1957,6 +2328,56 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
             </View>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={labelsOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLabelsOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Labels for {name || phone}</Text>
+
+            <ScrollView style={styles.modalScroll}>
+              {labels.length === 0 ? (
+                <Text style={styles.modalHint}>
+                  No labels yet. Create them from the chat list's menu.
+                </Text>
+              ) : (
+                labels.map(l => {
+                  const on = appliedLabels.includes(String(l.id));
+
+                  return (
+                    <TouchableOpacity
+                      key={l.id}
+                      style={styles.labelRow}
+                      onPress={() => toggleCustomerLabel(l)}
+                    >
+                      <View
+                        style={[styles.labelDot, { backgroundColor: l.color }]}
+                      />
+                      <Text style={styles.labelName} numberOfLines={1}>
+                        {l.name}
+                      </Text>
+                      <Text style={styles.labelTick}>{on ? '✓' : ''}</Text>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setLabelsOpen(false)}
+              >
+                <Text style={styles.modalCancelText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       <Modal
@@ -2296,15 +2717,26 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                   </Text>
                 ) : mediaTab === 'media' ? (
                   <View style={styles.mediaGrid}>
-                    {mediaData.media.map(m => (
+                    {mediaData.media.map((m, index) => (
                       <View key={m.id} style={styles.mediaWrap}>
-                        <TouchableOpacity onPress={() => Linking.openURL(m.url)}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setMediaOpen(false);
+                            openViewer(
+                              mediaData.media.map(photo => ({
+                                ...photo,
+                                media_url: photo.url,
+                              })),
+                              index,
+                            );
+                          }}
+                        >
                           <Image source={{ uri: m.url }} style={styles.thumb} />
                         </TouchableOpacity>
 
                         <TouchableOpacity
                           style={styles.mediaDl}
-                          onPress={() => downloadFile(m.download_url, m.url)}
+                          onPress={() => downloadFile(m.download_url, m.url, m)}
                         >
                           <Text style={styles.mediaDlIcon}>⤓</Text>
                         </TouchableOpacity>
@@ -2328,7 +2760,9 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                       {mediaTab !== 'links' && (
                         <TouchableOpacity
                           style={styles.fileDl}
-                          onPress={() => downloadFile(item.download_url, item.url)}
+                          onPress={() =>
+                            downloadFile(item.download_url, item.url, item)
+                          }
                         >
                           <Text style={styles.fileDlIcon}>⤓</Text>
                         </TouchableOpacity>
@@ -2800,6 +3234,108 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
         </View>
       </Modal>
       <Modal
+        visible={!!viewing}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewing(null)}
+      >
+        {(() => {
+          const photo = viewing?.list[viewing.index];
+          const hasPrev = !!viewing && viewing.index > 0;
+          const hasNext = !!viewing && viewing.index < viewing.list.length - 1;
+
+          return (
+            <View style={styles.viewer}>
+              <View style={[styles.viewerBar, { paddingTop: insets.top + 8 }]}>
+                <TouchableOpacity
+                  style={styles.viewerBtn}
+                  onPress={() => setViewing(null)}
+                  accessibilityLabel="Close"
+                >
+                  <WaIcon name="close" size={22} color="#fff" />
+                </TouchableOpacity>
+
+                {!!viewing && viewing.list.length > 1 && (
+                  <Text style={styles.viewerCount}>
+                    {viewing.index + 1} of {viewing.list.length}
+                  </Text>
+                )}
+
+                {!!photo && !savedFiles[photo.id] ? (
+                  <TouchableOpacity
+                    style={styles.viewerBtn}
+                    onPress={() =>
+                      downloadFile(photo.download_url, photo.media_url, photo)
+                    }
+                    accessibilityLabel="Download"
+                  >
+                    <WaIcon name="download" size={22} color="#fff" />
+                  </TouchableOpacity>
+                ) : (
+                  // Balances the close button so the counter stays centred.
+                  <View style={styles.viewerBtn} />
+                )}
+              </View>
+
+              <View style={styles.viewerBody}>
+                {/* Tapping the photo closes it again, as it does in WhatsApp. */}
+                <TouchableOpacity
+                  style={styles.viewerBody}
+                  activeOpacity={1}
+                  onPress={() => setViewing(null)}
+                >
+                  {!!photo && (
+                    <Image
+                      source={{ uri: photo.media_url }}
+                      style={styles.viewerImage}
+                      resizeMode="contain"
+                    />
+                  )}
+                </TouchableOpacity>
+
+                {hasPrev && (
+                  <TouchableOpacity
+                    style={[styles.viewerArrow, styles.viewerArrowLeft]}
+                    onPress={() => stepViewer(-1)}
+                    accessibilityLabel="Previous photo"
+                  >
+                    <WaIcon name="back" size={24} color="#fff" />
+                  </TouchableOpacity>
+                )}
+
+                {hasNext && (
+                  <TouchableOpacity
+                    style={[styles.viewerArrow, styles.viewerArrowRight]}
+                    onPress={() => stepViewer(1)}
+                    accessibilityLabel="Next photo"
+                  >
+                    {/* The same arrow, turned round — one path, two directions. */}
+                    <WaIcon
+                      name="back"
+                      size={24}
+                      color="#fff"
+                      style={styles.flipped}
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {!!photo && !isPlaceholderBody(photo.body) && (
+                <Text
+                  style={[
+                    styles.viewerCaption,
+                    { paddingBottom: insets.bottom + 12 },
+                  ]}
+                >
+                  {photo.body}
+                </Text>
+              )}
+            </View>
+          );
+        })()}
+      </Modal>
+
+      <Modal
         visible={productsOpen}
         transparent
         animationType="fade"
@@ -3070,6 +3606,58 @@ const makeStyles = T => StyleSheet.create({
   adBody: { fontSize: 11.5, color: T.textMuted, marginTop: 1 },
   adLink: { fontSize: 11, color: T.accent, fontWeight: '600', marginTop: 3 },
   media: { width: 200, height: 200, borderRadius: 8, marginBottom: 4 },
+  failMark: {
+    alignSelf: 'center',
+    marginHorizontal: 5,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: C.danger,
+  },
+  failMarkText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 17,
+  },
+  // Black, not the theme's background: a photo is judged against black on
+  // every phone gallery there is.
+  viewer: { flex: 1, backgroundColor: '#000' },
+  viewerBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+  },
+  viewerBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  viewerBody: { flex: 1 },
+  viewerCount: { color: '#fff', fontSize: 14, alignSelf: 'center' },
+  // Over the photo rather than beside it: a photo shown "contain" leaves black
+  // bars at the sides, and that is where the arrows sit.
+  viewerArrow: {
+    position: 'absolute',
+    top: '50%',
+    marginTop: -22,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  viewerArrowLeft: { left: 10 },
+  viewerArrowRight: { right: 10 },
+  flipped: { transform: [{ scaleX: -1 }] },
+  viewerImage: { flex: 1, width: '100%' },
+  viewerCaption: {
+    color: '#fff',
+    fontSize: 14,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    textAlign: 'center',
+  },
   mediaWrap: { position: 'relative' },
   pinBar: {
     flexDirection: 'row',
@@ -3110,6 +3698,14 @@ const makeStyles = T => StyleSheet.create({
   fileSub: { fontSize: 11, color: T.textMuted, marginTop: 1 },
   fileRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 200 },
   fileOpen: { flex: 1, minWidth: 0 },
+  voiceBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: T.green,
+  },
   fileDl: {
     width: 30,
     height: 30,
@@ -3202,6 +3798,18 @@ const makeStyles = T => StyleSheet.create({
   },
   prodRowOn: { backgroundColor: T.accentLight },
   prodThumb: { width: 44, height: 44, borderRadius: 6 },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: T.divider,
+  },
+  labelDot: { width: 12, height: 12, borderRadius: 6 },
+  labelName: { flex: 1, fontSize: 14.5, color: T.text },
+  labelTick: { fontSize: 16, fontWeight: '700', color: T.green, width: 18 },
   prodTick: { fontSize: 16, fontWeight: '700', color: T.accent, width: 18 },
   shortcutPop: {
     backgroundColor: T.panel,

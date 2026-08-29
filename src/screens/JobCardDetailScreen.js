@@ -14,7 +14,18 @@ import {
 import { taskAPI } from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import DateTimeField from '../components/DateTimeField';
 import { C } from '../utils/theme';
+
+// The three stages a task goes through, in order. Which one it is in is
+// derived from the task itself rather than stored, which is the same rule the
+// API applies when it decides what an update is allowed to change.
+const stageOf = task => {
+  if (task.status === 'completed') return 'done';
+  if (!task.expected_start_at || !task.expected_end_at) return 'schedule';
+  if (!task.actual_start_at) return 'start';
+  return 'finish';
+};
 
 const StatusBadge = ({ badge }) => (
   <View style={[styles.badge, { backgroundColor: badge?.bg || '#6E6E6E' }]}>
@@ -26,7 +37,7 @@ const StatusBadge = ({ badge }) => (
 
 const JobCardDetailScreen = ({ route, navigation }) => {
   const { id } = route.params;
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const canTransfer = hasPermission('transfer_job');
   const canReset = hasPermission('reset_schedule');
   const canDelete = hasPermission('delete_job_cards');
@@ -39,6 +50,13 @@ const JobCardDetailScreen = ({ route, navigation }) => {
   const [transferReason, setTransferReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // The task whose schedule is being filled in, and the times for it.
+  const [schedulingId, setSchedulingId] = useState(null);
+  const [expectedStart, setExpectedStart] = useState('');
+  const [expectedEnd, setExpectedEnd] = useState('');
+  const [holdingId, setHoldingId] = useState(null);
+  const [holdReason, setHoldReason] = useState('');
 
   const loadData = useCallback(async () => {
     try {
@@ -57,6 +75,69 @@ const JobCardDetailScreen = ({ route, navigation }) => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // One call for all three stages: the API works out from the task's own state
+  // whether this is a schedule, a start or a finish, and refuses the rest.
+  const updateTask = async (task, payload, done) => {
+    if (submitting) return;
+    setSubmitting(true);
+
+    try {
+      const res = await taskAPI.updateMyTask(task.id, payload);
+      await loadData();
+
+      setSchedulingId(null);
+      setHoldingId(null);
+      setHoldReason('');
+
+      if (done) done();
+      Alert.alert('Done', res.data?.message || 'Task updated.');
+    } catch (error) {
+      Alert.alert(
+        'Could not update',
+        error?.response?.data?.message
+          || 'This task could not be updated. Pull down and try again.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const saveSchedule = task => {
+    if (!expectedStart || !expectedEnd) {
+      Alert.alert('Missing times', 'Enter both an expected start and end.');
+      return;
+    }
+
+    updateTask(task, {
+      expected_start_at: expectedStart,
+      expected_end_at: expectedEnd,
+    });
+  };
+
+  const startTask = task =>
+    Alert.alert('Start this task?', 'The start time is stamped as now.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Start', onPress: () => updateTask(task, {}) },
+    ]);
+
+  const completeTask = task =>
+    Alert.alert('Complete this task?', 'The end time is stamped as now.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Complete',
+        onPress: () => updateTask(task, { status: 'completed' }),
+      },
+    ]);
+
+  const holdTask = task => {
+    if (!holdReason.trim()) {
+      Alert.alert('Missing reason', 'Say why this task is being held.');
+      return;
+    }
+
+    updateTask(task, { status: 'hold', hold_reason: holdReason.trim() });
+  };
 
   const startTransfer = task => {
     setTransferTaskId(task.id);
@@ -181,6 +262,11 @@ const JobCardDetailScreen = ({ route, navigation }) => {
       <Text style={styles.sectionTitle}>Tasks</Text>
       {(jobCard.tasks || []).map(task => {
         const eligibleUsers = users.filter(u => u.id !== task.assigned_user_id);
+        // Only the person the task belongs to may move it along — the API
+        // enforces this too, so showing the buttons to anyone else would only
+        // produce a refusal.
+        const mine = !!user && String(task.assigned_user_id) === String(user.id);
+        const stage = stageOf(task);
 
         return (
         <View key={task.id} style={styles.taskCard}>
@@ -209,6 +295,108 @@ const JobCardDetailScreen = ({ route, navigation }) => {
             <Text style={styles.changeRequestedText}>
               ⚠ Schedule change requested{task.schedule_change_reason ? `: ${task.schedule_change_reason}` : ''}
             </Text>
+          )}
+
+          {mine && stage === 'schedule' && (
+            schedulingId === task.id ? (
+              <View style={styles.stagePanel}>
+                <DateTimeField
+                  label="Expected start"
+                  value={expectedStart}
+                  onChange={setExpectedStart}
+                  placeholder="Select expected start"
+                  compact
+                />
+                <DateTimeField
+                  label="Expected end"
+                  value={expectedEnd}
+                  onChange={setExpectedEnd}
+                  placeholder="Select expected end"
+                  compact
+                />
+
+                <View style={styles.stageRow}>
+                  <TouchableOpacity
+                    style={styles.stageGhost}
+                    onPress={() => setSchedulingId(null)}
+                  >
+                    <Text style={styles.stageGhostText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.stageBtn, submitting && styles.stageBtnOff]}
+                    onPress={() => saveSchedule(task)}
+                    disabled={submitting}
+                  >
+                    <Text style={styles.stageBtnText}>Save schedule</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.stageBtn}
+                onPress={() => {
+                  setSchedulingId(task.id);
+                  setExpectedStart('');
+                  setExpectedEnd('');
+                }}
+              >
+                <Text style={styles.stageBtnText}>Set schedule</Text>
+              </TouchableOpacity>
+            )
+          )}
+
+          {mine && stage === 'start' && (
+            <TouchableOpacity
+              style={[styles.stageBtn, submitting && styles.stageBtnOff]}
+              onPress={() => startTask(task)}
+              disabled={submitting}
+            >
+              <Text style={styles.stageBtnText}>Start task</Text>
+            </TouchableOpacity>
+          )}
+
+          {mine && stage === 'finish' && (
+            <View style={styles.stageRow}>
+              <TouchableOpacity
+                style={[styles.stageBtn, submitting && styles.stageBtnOff]}
+                onPress={() => completeTask(task)}
+                disabled={submitting}
+              >
+                <Text style={styles.stageBtnText}>Complete</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.stageGhost}
+                onPress={() => {
+                  setHoldingId(holdingId === task.id ? null : task.id);
+                  setHoldReason('');
+                }}
+              >
+                <Text style={styles.stageGhostText}>
+                  {holdingId === task.id ? 'Cancel hold' : 'Hold'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {mine && holdingId === task.id && (
+            <View style={styles.stagePanel}>
+              <Text style={styles.fieldLabelSmall}>Why is it on hold?</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Reason for holding"
+                value={holdReason}
+                onChangeText={setHoldReason}
+              />
+              <TouchableOpacity
+                style={[styles.stageBtn, submitting && styles.stageBtnOff]}
+                onPress={() => holdTask(task)}
+                disabled={submitting}
+              >
+                <Text style={styles.stageBtnText}>Put on hold</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {canReset && (task.expected_start_at || task.expected_end_at) && (
@@ -334,6 +522,31 @@ const styles = StyleSheet.create({
   taskDetail: { fontSize: 12, color: C.textSecondary, marginTop: 4 },
   holdReasonText: { fontSize: 12, color: C.warning, marginTop: 4 },
   changeRequestedText: { fontSize: 12, color: C.danger, marginTop: 6, fontWeight: '600' },
+  stagePanel: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: C.bgAlt,
+  },
+  stageRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+  stageBtn: {
+    flex: 1,
+    alignItems: 'center',
+    borderRadius: 8,
+    paddingVertical: 10,
+    backgroundColor: C.success,
+  },
+  stageBtnOff: { opacity: 0.6 },
+  stageBtnText: { color: '#fff', fontSize: 13.5, fontWeight: '700' },
+  stageGhost: {
+    alignItems: 'center',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  stageGhostText: { color: C.textSecondary, fontSize: 13.5, fontWeight: '600' },
   resetBtn: {
     marginTop: 10,
     alignSelf: 'flex-start',

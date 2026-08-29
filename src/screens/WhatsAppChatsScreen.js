@@ -25,6 +25,39 @@ import WaIcon from '../components/WaIcon';
 import { C, WA_LIGHT, WA_DARK } from '../utils/theme';
 import { useWaTheme, setWaThemeMode } from '../utils/waTheme';
 import WaAvatar from '../components/WaAvatar';
+import DateTimeField from '../components/DateTimeField';
+
+// What a label can be coloured. The first seven are the defaults the server
+// seeds, so a label made here looks like one made on the web.
+const LABEL_COLORS = [
+  '#22c55e',
+  '#3b82f6',
+  '#eab308',
+  '#f97316',
+  '#a855f7',
+  '#ef4444',
+  '#111827',
+  '#06b6d4',
+  '#ec4899',
+  '#64748b',
+];
+
+// The job filter's pills, in the order the web CRM shows them.
+const JOB_STATUSES = [
+  ['ongoing', 'On-going', '#2563EB'],
+  ['delay', 'Delay', '#E0333F'],
+  ['completed', 'Completed', '#1DA13B'],
+];
+
+// 2026-08-30 -> 30 Aug, which is all the range button has room for.
+const shortDate = value => {
+  if (!value) return '';
+  const parsed = new Date(`${value}T00:00:00`);
+
+  return isNaN(parsed.getTime())
+    ? value
+    : parsed.toLocaleDateString([], { day: 'numeric', month: 'short' });
+};
 
 const WhatsAppChatsScreen = ({ navigation }) => {
   // Follows the phone's appearance setting. Shadowing WA and styles
@@ -67,9 +100,28 @@ const WhatsAppChatsScreen = ({ navigation }) => {
     archived: 0,
   });
 
+  // The job filter, as the web CRM's top bar: status, an optional delivery
+  // date range, and the totals behind each pill.
+  const [jobStatus, setJobStatus] = useState('');
+  const [jobFrom, setJobFrom] = useState('');
+  const [jobTo, setJobTo] = useState('');
+  const [jobDatesOpen, setJobDatesOpen] = useState(false);
+  const [canFilterJobs, setCanFilterJobs] = useState(false);
+  const [jobCounts, setJobCounts] = useState({
+    ongoing: 0,
+    delay: 0,
+    completed: 0,
+  });
+
   const [labels, setLabels] = useState([]);
   const [activeLabel, setActiveLabel] = useState('');
   const [labelSheet, setLabelSheet] = useState(null); // chat being labelled
+  // The label manager: the list itself, and the one being written.
+  const [manageOpen, setManageOpen] = useState(false);
+  const [editingLabel, setEditingLabel] = useState(null);
+  const [labelName, setLabelName] = useState('');
+  const [labelColor, setLabelColor] = useState(LABEL_COLORS[0]);
+  const [savingLabel, setSavingLabel] = useState(false);
   const [appliedLabels, setAppliedLabels] = useState([]);
   const [labelError, setLabelError] = useState('');
 
@@ -83,6 +135,8 @@ const WhatsAppChatsScreen = ({ navigation }) => {
   labelRef.current = activeLabel;
   const pageRef = useRef(1);
   pageRef.current = page;
+  const jobRef = useRef({ status: '', from: '', to: '' });
+  jobRef.current = { status: jobStatus, from: jobFrom, to: jobTo };
 
   useEffect(() => {
     navigation.setOptions({
@@ -102,29 +156,35 @@ const WhatsAppChatsScreen = ({ navigation }) => {
         </TouchableOpacity>
       ),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigation, WA, styles.headerBtn]);
 
-  const load = useCallback(async (pageNo = 1, term = '', which = '', label = '') => {
-    const res = await whatsappAPI.getChats(pageNo, term, which, label);
+  const load = useCallback(
+    async (pageNo = 1, term = '', which = '', label = '', job = null) => {
+      const filter = job || jobRef.current;
+      const res = await whatsappAPI.getChats(pageNo, term, which, label, filter);
 
-    // A reply for a filter the agent has already moved away from would repopulate
-    // the list with the wrong chats — which is what made tapping Unread or a
-    // label look like it did nothing when a poll was already in flight.
-    const stale =
-      `${term}|${which}|${label}`
-      !== `${searchRef.current}|${viewRef.current}|${labelRef.current}`;
+      // A reply for a filter the agent has already moved away from would repopulate
+      // the list with the wrong chats — which is what made tapping Unread or a
+      // label look like it did nothing when a poll was already in flight.
+      const now = jobRef.current;
+      const stale =
+        `${term}|${which}|${label}|${filter.status}|${filter.from}|${filter.to}`
+        !== `${searchRef.current}|${viewRef.current}|${labelRef.current}|${now.status}|${now.from}|${now.to}`;
 
-    if (stale) return;
+      if (stale) return;
 
-    const data = res.data;
+      const data = res.data;
 
-    if (data.view_counts) setViewCounts(data.view_counts);
+      if (data.view_counts) setViewCounts(data.view_counts);
+      if (data.job_status_counts) setJobCounts(data.job_status_counts);
+      setCanFilterJobs(!!data.can_filter_jobs);
 
-    setHasMore(!!data.has_more);
-    setPage(data.current_page || pageNo);
-    setChats(prev => (pageNo === 1 ? data.data : [...prev, ...data.data]));
-  }, []);
+      setHasMore(!!data.has_more);
+      setPage(data.current_page || pageNo);
+      setChats(prev => (pageNo === 1 ? data.data : [...prev, ...data.data]));
+    },
+    [],
+  );
 
   useEffect(() => {
     // Debounced so typing doesn't fire a request per character.
@@ -136,7 +196,7 @@ const WhatsAppChatsScreen = ({ navigation }) => {
     }, 300);
 
     return () => clearTimeout(handle);
-  }, [search, view, activeLabel, load]);
+  }, [search, view, activeLabel, jobStatus, jobFrom, jobTo, load]);
 
   // Refresh whenever the screen regains focus (e.g. coming back from a thread,
   // where messages will have been marked read) and every 3s while it is open.
@@ -217,6 +277,64 @@ const WhatsAppChatsScreen = ({ navigation }) => {
       setAppliedLabels([]);
     }
   };
+
+  const startLabel = label => {
+    setEditingLabel(label || { id: null });
+    setLabelName(label?.name || '');
+    setLabelColor(label?.color || LABEL_COLORS[0]);
+  };
+
+  const saveLabel = async () => {
+    const name = labelName.trim();
+
+    if (!name) {
+      setLabelError('Give the label a name.');
+      return;
+    }
+
+    setSavingLabel(true);
+    setLabelError('');
+
+    try {
+      await whatsappAPI.saveLabel({
+        id: editingLabel?.id || undefined,
+        name,
+        color: labelColor,
+      });
+
+      setEditingLabel(null);
+      await loadLabels();
+    } catch (error) {
+      setLabelError(
+        error?.response?.data?.message || 'Could not save that label.',
+      );
+    } finally {
+      setSavingLabel(false);
+    }
+  };
+
+  const removeLabel = label =>
+    Alert.alert(
+      `Delete "${label.name}"?`,
+      'The chats keep existing — they just lose this tag.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await whatsappAPI.deleteLabel(label.id);
+              // A filter pinned to the label that just went would show nothing.
+              if (String(activeLabel) === String(label.id)) setActiveLabel('');
+              await loadLabels();
+            } catch (error) {
+              setLabelError('Could not delete that label.');
+            }
+          },
+        },
+      ],
+    );
 
   const toggleLabel = async label => {
     if (!labelSheet) return;
@@ -440,6 +558,77 @@ const WhatsAppChatsScreen = ({ navigation }) => {
         })}
       </View>
 
+      {/* The job filter, same as the web CRM's top bar: which of this
+          customer's jobs are running, late or done, over an optional delivery
+          date range. Only for people who may see job cards at all. */}
+      {canFilterJobs && (
+        <View style={styles.jobBar}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.jobBarContent}
+          >
+            {JOB_STATUSES.map(([key, label, colour]) => {
+              const on = jobStatus === key;
+
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.jobPill,
+                    on && { backgroundColor: colour, borderColor: colour },
+                  ]}
+                  onPress={() => setJobStatus(on ? '' : key)}
+                >
+                  <Text
+                    style={[styles.jobPillText, on && styles.jobPillTextOn]}
+                  >
+                    {label}
+                  </Text>
+                  <View style={[styles.jobCount, on && styles.jobCountOn]}>
+                    <Text
+                      style={[styles.jobCountText, on && styles.jobPillTextOn]}
+                    >
+                      {jobCounts[key] ?? 0}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+
+            <TouchableOpacity
+              style={[styles.jobPill, (jobFrom || jobTo) && styles.jobPillOn]}
+              onPress={() => setJobDatesOpen(true)}
+            >
+              <Text
+                style={[
+                  styles.jobPillText,
+                  (jobFrom || jobTo) && styles.jobPillTextOn,
+                ]}
+              >
+                {jobFrom || jobTo
+                  ? `${shortDate(jobFrom) || 'Any'} – ${shortDate(jobTo) || 'Any'}`
+                  : 'Dates'}
+              </Text>
+            </TouchableOpacity>
+
+            {(jobStatus || jobFrom || jobTo) && (
+              <TouchableOpacity
+                style={styles.jobClear}
+                onPress={() => {
+                  setJobStatus('');
+                  setJobFrom('');
+                  setJobTo('');
+                }}
+              >
+                <WaIcon name="close" size={14} color={WA.icon} />
+                <Text style={styles.jobClearText}>Clear</Text>
+              </TouchableOpacity>
+            )}
+          </ScrollView>
+        </View>
+      )}
+
       {/* Every label on screen, scrolled sideways — not tucked behind a menu. */}
       {labels.length > 0 && (
         <ScrollView
@@ -537,6 +726,23 @@ const WhatsAppChatsScreen = ({ navigation }) => {
           <View style={styles.sheet}>
             <Text style={styles.sheetTitle}>Theme</Text>
 
+            <TouchableOpacity
+              style={[styles.sheetItem, styles.sheetRow]}
+              onPress={() => {
+                setMenuOpen(false);
+                setEditingLabel(null);
+                setLabelError('');
+                setManageOpen(true);
+              }}
+            >
+              <WaIcon name="star" size={20} color={WA.icon} />
+              <Text style={styles.sheetText}>Manage labels</Text>
+            </TouchableOpacity>
+
+            <View style={styles.sheetDivider} />
+
+            <Text style={styles.sheetTitle}>Theme</Text>
+
             {THEME_MODES.map(([key, icon, label]) => (
               <TouchableOpacity
                 key={key}
@@ -559,6 +765,60 @@ const WhatsAppChatsScreen = ({ navigation }) => {
                 {key === mode && <Text style={styles.sheetTick}>✓</Text>}
               </TouchableOpacity>
             ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={jobDatesOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setJobDatesOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.sheetBackdrop}
+          activeOpacity={1}
+          onPress={() => setJobDatesOpen(false)}
+        >
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>Delivery date</Text>
+
+            <View style={styles.jobDates}>
+              <DateTimeField
+                label="From"
+                value={jobFrom}
+                onChange={setJobFrom}
+                placeholder="Any"
+                compact
+                dateOnly
+              />
+              <DateTimeField
+                label="To"
+                value={jobTo}
+                onChange={setJobTo}
+                placeholder="Any"
+                compact
+                dateOnly
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.sheetItem}
+              onPress={() => {
+                setJobFrom('');
+                setJobTo('');
+                setJobDatesOpen(false);
+              }}
+            >
+              <Text style={styles.sheetText}>Clear dates</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sheetItem}
+              onPress={() => setJobDatesOpen(false)}
+            >
+              <Text style={[styles.sheetText, styles.sheetTextOn]}>Done</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -680,6 +940,117 @@ const WhatsAppChatsScreen = ({ navigation }) => {
       </Modal>
 
       <Modal
+        visible={manageOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setManageOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.sheetBackdrop}
+          activeOpacity={1}
+          onPress={() => setManageOpen(false)}
+        >
+          {/* Stops a tap inside the sheet from closing it, which a backdrop
+              wrapping its own content otherwise does. */}
+          <TouchableOpacity style={styles.sheet} activeOpacity={1}>
+            <Text style={styles.sheetTitle}>Labels</Text>
+
+            {!!labelError && <Text style={styles.labelError}>{labelError}</Text>}
+
+            {editingLabel ? (
+              <View style={styles.labelEditor}>
+                <TextInput
+                  style={styles.labelInput}
+                  placeholder="Label name"
+                  placeholderTextColor={WA.textMuted}
+                  value={labelName}
+                  onChangeText={setLabelName}
+                  autoFocus
+                />
+
+                <View style={styles.swatchRow}>
+                  {LABEL_COLORS.map(colour => (
+                    <TouchableOpacity
+                      key={colour}
+                      style={[
+                        styles.swatch,
+                        { backgroundColor: colour },
+                        labelColor === colour && styles.swatchOn,
+                      ]}
+                      onPress={() => setLabelColor(colour)}
+                      accessibilityLabel={`Colour ${colour}`}
+                    />
+                  ))}
+                </View>
+
+                <View style={styles.labelActions}>
+                  <TouchableOpacity
+                    style={styles.labelGhost}
+                    onPress={() => setEditingLabel(null)}
+                  >
+                    <Text style={styles.labelGhostText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.labelSave, savingLabel && styles.labelSaveOff]}
+                    onPress={saveLabel}
+                    disabled={savingLabel}
+                  >
+                    <Text style={styles.labelSaveText}>
+                      {editingLabel.id ? 'Save' : 'Create'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <>
+                <ScrollView style={styles.labelList}>
+                  {labels.length === 0 ? (
+                    <Text style={styles.labelHint}>No labels yet.</Text>
+                  ) : (
+                    labels.map(l => (
+                      <View key={l.id} style={styles.labelManageRow}>
+                        <TouchableOpacity
+                          style={styles.labelManageMain}
+                          onPress={() => startLabel(l)}
+                        >
+                          <View
+                            style={[styles.labelDot, { backgroundColor: l.color }]}
+                          />
+                          <Text style={styles.sheetText} numberOfLines={1}>
+                            {l.name}
+                          </Text>
+                          <Text style={styles.labelManageCount}>
+                            {l.customers_count ?? 0}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.labelDelete}
+                          onPress={() => removeLabel(l)}
+                          accessibilityLabel={`Delete ${l.name}`}
+                          hitSlop={HIT}
+                        >
+                          <WaIcon name="trash" size={18} color={C.danger} />
+                        </TouchableOpacity>
+                      </View>
+                    ))
+                  )}
+                </ScrollView>
+
+                <TouchableOpacity
+                  style={styles.labelSave}
+                  onPress={() => startLabel(null)}
+                >
+                  <Text style={styles.labelSaveText}>New label</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
         visible={!!labelSheet}
         transparent
         animationType="fade"
@@ -710,9 +1081,19 @@ const WhatsAppChatsScreen = ({ navigation }) => {
               );
             })}
 
-            <Text style={styles.labelHint}>
-              Create or rename labels from the web CRM.
-            </Text>
+            <TouchableOpacity
+              style={styles.labelRowItem}
+              onPress={() => {
+                setLabelSheet(null);
+                setEditingLabel(null);
+                setLabelError('');
+                setManageOpen(true);
+              }}
+            >
+              <Text style={[styles.sheetText, styles.sheetTextOn]}>
+                Manage labels…
+              </Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -831,6 +1212,49 @@ const makeStyles = T => StyleSheet.create({
   viewTabActive: { backgroundColor: T.chipOn },
   viewTabText: { fontSize: 13.5, color: T.textMuted, fontWeight: '500' },
   viewTabTextActive: { color: T.chipOnText, fontWeight: '600' },
+  jobBar: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: T.divider,
+    backgroundColor: T.panel,
+  },
+  jobBarContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+    gap: 8,
+  },
+  jobPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: T.divider,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  jobPillOn: { backgroundColor: T.green, borderColor: T.green },
+  jobPillText: { fontSize: 12.5, color: T.text },
+  jobPillTextOn: { color: '#fff', fontWeight: '600' },
+  jobCount: {
+    minWidth: 20,
+    alignItems: 'center',
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    backgroundColor: T.panelAlt,
+  },
+  jobCountOn: { backgroundColor: 'rgba(255,255,255,0.25)' },
+  jobCountText: { fontSize: 11, fontWeight: '700', color: T.textMuted },
+  jobClear: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  jobClearText: { fontSize: 12.5, color: T.icon },
+  jobDates: { paddingHorizontal: 20 },
   labelBar: {
     flexGrow: 0,
     backgroundColor: T.panel,
@@ -995,6 +1419,66 @@ const makeStyles = T => StyleSheet.create({
     paddingBottom: 6,
     backgroundColor: T.panelAlt,
   },
+  labelList: { maxHeight: 320 },
+  labelManageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  labelManageMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+  },
+  labelManageCount: {
+    marginLeft: 'auto',
+    fontSize: 12,
+    fontWeight: '700',
+    color: T.textMuted,
+  },
+  labelDelete: { padding: 8 },
+  labelEditor: { paddingHorizontal: 20, paddingTop: 4 },
+  labelInput: {
+    borderWidth: 1,
+    borderColor: T.divider,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: T.text,
+    backgroundColor: T.panelAlt,
+  },
+  swatchRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 14,
+  },
+  swatch: { width: 30, height: 30, borderRadius: 15 },
+  // A ring rather than a tick: the colour has to stay readable underneath.
+  swatchOn: { borderWidth: 3, borderColor: T.text },
+  labelActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 16,
+  },
+  labelGhost: { paddingHorizontal: 16, paddingVertical: 10 },
+  labelGhostText: { fontSize: 14, color: T.textMuted, fontWeight: '600' },
+  labelSave: {
+    alignItems: 'center',
+    borderRadius: 8,
+    paddingVertical: 11,
+    paddingHorizontal: 18,
+    marginHorizontal: 20,
+    marginTop: 6,
+    backgroundColor: T.green,
+  },
+  labelSaveOff: { opacity: 0.6 },
+  labelSaveText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   labelHint: {
     fontSize: 12,
     color: T.textMuted,

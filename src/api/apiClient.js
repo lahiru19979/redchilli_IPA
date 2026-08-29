@@ -311,11 +311,29 @@ export const customerAPI = {
 
 // WhatsApp CRM — mirrors the web inbox, sharing the same backend service.
 export const whatsappAPI = {
-  getChats: (page = 1, search = '', view = '', label = '') =>
-    apiClient.get('/whatsapp/chats', { params: { page, search, view, label } }),
+  // `job` narrows the list to customers holding a job card of that status,
+  // optionally within a delivery date range — the web CRM's top filter bar.
+  getChats: (page = 1, search = '', view = '', label = '', job = {}) =>
+    apiClient.get('/whatsapp/chats', {
+      params: {
+        page,
+        search,
+        view,
+        label,
+        job_status: job.status || '',
+        job_from: job.from || '',
+        job_to: job.to || '',
+      },
+    }),
 
   getLabels: (customerId = '') =>
     apiClient.get('/whatsapp/labels', { params: { customer_id: customerId } }),
+
+  // Create when there is no id, rename or recolour when there is.
+  saveLabel: ({ id, name, color }) =>
+    apiClient.post('/whatsapp/labels', { id, name, color }),
+
+  deleteLabel: id => apiClient.delete(`/whatsapp/labels/${id}`),
 
   toggleLabel: (customerId, labelId, value) =>
     apiClient.post(`/whatsapp/chats/${customerId}/label`, {

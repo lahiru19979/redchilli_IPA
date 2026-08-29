@@ -6,6 +6,7 @@ import { Text, View } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AppHeader from '../components/AppHeader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   SafeAreaProvider,
@@ -144,6 +145,216 @@ const AppShell = ({ children }) => {
   );
 };
 
+const RootNavigator = ({ isAuthenticated }) => {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator
+        screenOptions={{
+          // Our own header rather than the native one: see AppHeader.
+          header: props => <AppHeader {...props} />,
+          headerStyle: {
+            backgroundColor: '#C4212D',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          headerTitleAlign: 'center',
+          headerBackTitleVisible: false,
+        }}
+      >
+        {isAuthenticated ? (
+          <>
+            <Stack.Screen
+              name="MainTabs"
+              component={MainTabs}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="InvoiceDetail"
+              component={InvoiceDetailScreen}
+              options={{ title: 'Invoice Details' }}
+            />
+            <Stack.Screen
+              name="CreateInvoice"
+              component={CreateInvoiceScreen}
+              options={{ title: 'Create Invoice' }}
+            />
+            <Stack.Screen
+              name="EditInvoice"
+              component={EditInvoiceScreen}
+              options={{ title: 'Edit Invoice' }}
+            />
+            <Stack.Screen
+              name="Invoice"
+              component={InvoiceScreen}
+              options={{ title: 'Invoices' }}
+            />
+            <Stack.Screen
+              name="CreateProduct"
+              component={CreateProductScreen}
+              options={{ title: 'Create Product' }}
+            />
+            <Stack.Screen
+              name="EditProduct"
+              component={CreateProductScreen}
+              options={{ title: 'Edit Product' }}
+            />
+            <Stack.Screen
+              name="AllProduct"
+              component={productsScreen}
+              options={{ title: 'All Products' }}
+            />
+            <Stack.Screen
+              name="BarcodeScan"
+              component={BarcodeScanScreen}
+              options={{
+                headerShown: false,
+                presentation: 'fullScreenModal',
+              }}
+            />
+            <Stack.Screen
+              name="InventoryScan"
+              component={InventoryScanScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ScannedItems"
+              component={ScannedItemsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="AllStocks"
+              component={AllStocksScreen}
+              options={{ title: 'Inventory' }}
+            />
+            <Stack.Screen
+              name="InventoryDetail"
+              component={InventoryDetailScreen}
+              options={{ title: 'Stock Details' }}
+            />
+            <Stack.Screen
+              name="InventoryHub"
+              component={InventoryHubScreen}
+              options={{ title: 'Inventory' }}
+            />
+            <Stack.Screen
+              name="AvailableInventory"
+              component={AvailableInventoryScreen}
+              options={{ title: 'Available Inventory' }}
+            />
+            <Stack.Screen
+              name="InventoryHistory"
+              component={InventoryHistoryScreen}
+              options={{ title: 'Inventory History' }}
+            />
+            <Stack.Screen
+              name="WholesaleBarcode"
+              component={WholesaleBarcodeScreen}
+              options={{ title: 'WholeSale Barcode' }}
+            />
+            <Stack.Screen
+              name="reports"
+              component={revenueScreen}
+              options={{ title: 'Revenue' }}
+            />
+            <Stack.Screen
+              name="AllProducts_screen"
+              component={AllProductScreen}
+              options={{ title: 'All Products' }}
+            />
+
+            <Stack.Screen
+              name="Cost"
+              component={CostScreen}
+              options={{ title: 'Cost Module' }}
+            />
+            <Stack.Screen
+              name="Expenses"
+              component={ExpensesScreen}
+              options={{ title: 'Expenses' }}
+            />
+            <Stack.Screen
+              name="Budget"
+              component={BudgetScreen}
+              options={{ title: 'Budgets' }}
+            />
+            <Stack.Screen
+              name="CostTypes"
+              component={CostTypesScreen}
+              options={{ title: 'Cost Types' }}
+            />
+            <Stack.Screen
+              name="CostGroups"
+              component={CostGroupsScreen}
+              options={{ title: 'Cost Groups' }}
+            />
+            <Stack.Screen
+              name="CostDescriptions"
+              component={CostDescriptionsScreen}
+              options={{ title: 'Cost Descriptions' }}
+            />
+
+            <Stack.Screen
+              name="WhatsAppChats"
+              component={WhatsAppChatsScreen}
+              options={{ title: 'WhatsApp' }}
+            />
+            <Stack.Screen
+              name="WhatsAppThread"
+              component={WhatsAppThreadScreen}
+              options={{ title: 'Chat' }}
+            />
+
+            <Stack.Screen
+              name="WhatsAppJobs"
+              component={WhatsAppJobsScreen}
+              options={{ title: 'Jobs' }}
+            />
+
+            <Stack.Screen
+              name="TaskManager"
+              component={TaskManagerScreen}
+              options={{ title: 'Task Manager' }}
+            />
+            <Stack.Screen
+              name="JobCards"
+              component={JobCardsScreen}
+              options={{ title: 'Job Cards' }}
+            />
+            <Stack.Screen
+              name="CreateJobCard"
+              component={CreateJobCardScreen}
+              options={{ title: 'New Job Card' }}
+            />
+            <Stack.Screen
+              name="JobCardDetail"
+              component={JobCardDetailScreen}
+              options={{ title: 'Job Card Details' }}
+            />
+            <Stack.Screen
+              name="MyTasks"
+              component={MyTasksScreen}
+              options={{ title: 'My Tasks' }}
+            />
+            <Stack.Screen
+              name="TaskTypes"
+              component={TaskTypesScreen}
+              options={{ title: 'Task Types' }}
+            />
+          </>
+        ) : (
+          <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+};
+
 const AppNavigator = () => {
   const { isAuthenticated, loading } = useAuth();
 
@@ -154,209 +365,7 @@ const AppNavigator = () => {
   return (
     <SafeAreaProvider>
       <AppShell>
-        <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: '#C4212D',
-            },
-            headerTintColor: '#fff',
-            headerTitleStyle: {
-              fontWeight: 'bold',
-            },
-            headerTitleAlign: 'center',
-            headerBackTitleVisible: false,
-          }}
-        >
-          {isAuthenticated ? (
-            <>
-              <Stack.Screen
-                name="MainTabs"
-                component={MainTabs}
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="InvoiceDetail"
-                component={InvoiceDetailScreen}
-                options={{ title: 'Invoice Details' }}
-              />
-              <Stack.Screen
-                name="CreateInvoice"
-                component={CreateInvoiceScreen}
-                options={{ title: 'Create Invoice' }}
-              />
-              <Stack.Screen
-                name="EditInvoice"
-                component={EditInvoiceScreen}
-                options={{ title: 'Edit Invoice' }}
-              />
-              <Stack.Screen
-                name="Invoice"
-                component={InvoiceScreen}
-                options={{ title: 'Invoices' }}
-              />
-              <Stack.Screen
-                name="CreateProduct"
-                component={CreateProductScreen}
-                options={{ title: 'Create Product' }}
-              />
-              <Stack.Screen
-                name="EditProduct"
-                component={CreateProductScreen}
-                options={{ title: 'Edit Product' }}
-              />
-              <Stack.Screen
-                name="AllProduct"
-                component={productsScreen}
-                options={{ title: 'All Products' }}
-              />
-              <Stack.Screen
-                name="BarcodeScan"
-                component={BarcodeScanScreen}
-                options={{
-                  headerShown: false,
-                  presentation: 'fullScreenModal',
-                }}
-              />
-              <Stack.Screen
-                name="InventoryScan"
-                component={InventoryScanScreen}
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="ScannedItems"
-                component={ScannedItemsScreen}
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="AllStocks"
-                component={AllStocksScreen}
-                options={{ title: 'Inventory' }}
-              />
-              <Stack.Screen
-                name="InventoryDetail"
-                component={InventoryDetailScreen}
-                options={{ title: 'Stock Details' }}
-              />
-              <Stack.Screen
-                name="InventoryHub"
-                component={InventoryHubScreen}
-                options={{ title: 'Inventory' }}
-              />
-              <Stack.Screen
-                name="AvailableInventory"
-                component={AvailableInventoryScreen}
-                options={{ title: 'Available Inventory' }}
-              />
-              <Stack.Screen
-                name="InventoryHistory"
-                component={InventoryHistoryScreen}
-                options={{ title: 'Inventory History' }}
-              />
-              <Stack.Screen
-                name="WholesaleBarcode"
-                component={WholesaleBarcodeScreen}
-                options={{ title: 'WholeSale Barcode' }}
-              />
-              <Stack.Screen
-                name="reports"
-                component={revenueScreen}
-                options={{ title: 'Revenue' }}
-              />
-              <Stack.Screen
-                name="AllProducts_screen"
-                component={AllProductScreen}
-                options={{ title: 'All Products' }}
-              />
-
-              <Stack.Screen
-                name="Cost"
-                component={CostScreen}
-                options={{ title: 'Cost Module' }}
-              />
-              <Stack.Screen
-                name="Expenses"
-                component={ExpensesScreen}
-                options={{ title: 'Expenses' }}
-              />
-              <Stack.Screen
-                name="Budget"
-                component={BudgetScreen}
-                options={{ title: 'Budgets' }}
-              />
-              <Stack.Screen
-                name="CostTypes"
-                component={CostTypesScreen}
-                options={{ title: 'Cost Types' }}
-              />
-              <Stack.Screen
-                name="CostGroups"
-                component={CostGroupsScreen}
-                options={{ title: 'Cost Groups' }}
-              />
-              <Stack.Screen
-                name="CostDescriptions"
-                component={CostDescriptionsScreen}
-                options={{ title: 'Cost Descriptions' }}
-              />
-
-              <Stack.Screen
-                name="WhatsAppChats"
-                component={WhatsAppChatsScreen}
-                options={{ title: 'WhatsApp' }}
-              />
-              <Stack.Screen
-                name="WhatsAppThread"
-                component={WhatsAppThreadScreen}
-                options={{ title: 'Chat' }}
-              />
-
-              <Stack.Screen
-                name="WhatsAppJobs"
-                component={WhatsAppJobsScreen}
-                options={{ title: 'Jobs' }}
-              />
-
-              <Stack.Screen
-                name="TaskManager"
-                component={TaskManagerScreen}
-                options={{ title: 'Task Manager' }}
-              />
-              <Stack.Screen
-                name="JobCards"
-                component={JobCardsScreen}
-                options={{ title: 'Job Cards' }}
-              />
-              <Stack.Screen
-                name="CreateJobCard"
-                component={CreateJobCardScreen}
-                options={{ title: 'New Job Card' }}
-              />
-              <Stack.Screen
-                name="JobCardDetail"
-                component={JobCardDetailScreen}
-                options={{ title: 'Job Card Details' }}
-              />
-              <Stack.Screen
-                name="MyTasks"
-                component={MyTasksScreen}
-                options={{ title: 'My Tasks' }}
-              />
-              <Stack.Screen
-                name="TaskTypes"
-                component={TaskTypesScreen}
-                options={{ title: 'Task Types' }}
-              />
-            </>
-          ) : (
-            <Stack.Screen
-              name="Login"
-              component={LoginScreen}
-              options={{ headerShown: false }}
-            />
-          )}
-        </Stack.Navigator>
-        </NavigationContainer>
+        <RootNavigator isAuthenticated={isAuthenticated} />
       </AppShell>
     </SafeAreaProvider>
   );

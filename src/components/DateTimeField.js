@@ -3,6 +3,9 @@
 // A tappable input that opens the native calendar (then clock) picker and
 // reports the chosen value back as a 'YYYY-MM-DD HH:MM' string, matching the
 // format the Task Manager API endpoints expect.
+//
+// Pass dateOnly when the time of day is not part of the answer — a delivery
+// date range, say — and it stops after the calendar and reports 'YYYY-MM-DD'.
 
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
@@ -11,10 +14,13 @@ import { C } from '../utils/theme';
 
 const pad = n => String(n).padStart(2, '0');
 
-const formatValue = date =>
-  `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
-    date.getHours(),
-  )}:${pad(date.getMinutes())}`;
+const formatDate = date =>
+  `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+const formatValue = (date, dateOnly) =>
+  dateOnly
+    ? formatDate(date)
+    : `${formatDate(date)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 
 const parseValue = value => {
   if (!value) return new Date();
@@ -29,6 +35,7 @@ const DateTimeField = ({
   onChange,
   placeholder = 'Select date & time',
   compact = false,
+  dateOnly = false,
 }) => {
   const [stage, setStage] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -47,7 +54,11 @@ const DateTimeField = ({
     if (stage === 'date') {
       const next = selected || draft;
       setDraft(next);
-      if (Platform.OS === 'android') {
+
+      if (dateOnly) {
+        onChange(formatValue(next, true));
+        setStage(null);
+      } else if (Platform.OS === 'android') {
         setStage('time');
       } else {
         // iOS spinner already includes both date and time in one picker.
@@ -84,7 +95,7 @@ const DateTimeField = ({
       {stage && (
         <DateTimePicker
           value={draft || new Date()}
-          mode={Platform.OS === 'ios' ? 'datetime' : stage}
+          mode={dateOnly ? 'date' : Platform.OS === 'ios' ? 'datetime' : stage}
           is24Hour
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={handleChange}
