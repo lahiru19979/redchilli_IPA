@@ -19,6 +19,7 @@ import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import { costAPI, MEDIA_BASE_URL } from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import SelectField from '../components/SelectField';
+import DateTimeField from '../components/DateTimeField';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { C } from '../utils/theme';
 
@@ -33,6 +34,7 @@ const ExpensesScreen = () => {
   const [expenses, setExpenses] = useState([]);
   const [meta, setMeta] = useState({ types: [], codes: [], descriptions: [] });
 
+
   // Add/Edit-form state
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -41,6 +43,9 @@ const ExpensesScreen = () => {
   const [costCode, setCostCode] = useState(null);
   const [costDes, setCostDes] = useState(null);
   const [amount, setAmount] = useState('');
+  // The date on the supplier's invoice, which is not always the day it gets
+  // entered here — so it cannot be inferred from created_at.
+  const [invoiceDate, setInvoiceDate] = useState('');
   const [photo, setPhoto] = useState(null);
 
   const loadData = useCallback(async () => {
@@ -146,6 +151,7 @@ const ExpensesScreen = () => {
     setCostCode(null);
     setCostDes(null);
     setAmount('');
+    setInvoiceDate('');
     setPhoto(null);
   };
 
@@ -154,6 +160,7 @@ const ExpensesScreen = () => {
     setCostCode(item.cost_code);
     setCostDes(item.cost_des);
     setAmount(item.amount != null ? String(item.amount) : '');
+    setInvoiceDate(item.invoice_date ? String(item.invoice_date).slice(0, 10) : '');
     setExistingImage(item.imageurl || null);
     setPhoto(null);
     setShowForm(true);
@@ -173,6 +180,7 @@ const ExpensesScreen = () => {
     formData.append('cost_code', String(costCode));
     formData.append('cost_des', String(costDes));
     formData.append('amount', String(amount));
+    formData.append('invoice_date', invoiceDate);
     if (photo) {
       formData.append('att', photo);
     }
@@ -259,6 +267,14 @@ const ExpensesScreen = () => {
             options={desOptions}
             value={costDes}
             onChange={setCostDes}
+          />
+
+          <DateTimeField
+            label="Invoice Date"
+            value={invoiceDate}
+            onChange={setInvoiceDate}
+            placeholder="Select the invoice date"
+            dateOnly
           />
 
           <Text style={styles.fieldLabel}>Amount</Text>
@@ -351,9 +367,11 @@ const ExpensesScreen = () => {
                 <Text style={styles.cardTitle}>{item.des || 'Expense'}</Text>
                 <Text style={styles.cardSub}>Code: {item.code || '-'}</Text>
                 <Text style={styles.cardDate}>
-                  {item.created_at
-                    ? new Date(item.created_at).toLocaleDateString()
-                    : ''}
+                  {item.invoice_date
+                    ? new Date(item.invoice_date).toLocaleDateString()
+                    : item.created_at
+                      ? new Date(item.created_at).toLocaleDateString()
+                      : ''}
                 </Text>
               </View>
               <Text style={styles.cardAmount}>Rs {item.amount}</Text>

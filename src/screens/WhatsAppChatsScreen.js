@@ -533,7 +533,9 @@ const WhatsAppChatsScreen = ({ navigation }) => {
           ['favorites', 'Favourites'],
           ['archived', 'Archived'],
         ].map(([key, label]) => {
-          const total = viewCounts[key || 'chats'] ?? 0;
+          // No count on Chats: it is every conversation there is, which tells
+          // nobody anything the other three do not.
+          const total = key ? viewCounts[key] ?? 0 : null;
 
           return (
             <TouchableOpacity
@@ -551,7 +553,7 @@ const WhatsAppChatsScreen = ({ navigation }) => {
                   view === key && styles.viewTabTextActive,
                 ]}
               >
-                {label} ({total})
+                {total === null ? label : `${label} (${total})`}
               </Text>
             </TouchableOpacity>
           );

@@ -42,6 +42,7 @@ import WaIcon, { WaTicks } from '../components/WaIcon';
 import WaWallpaper from '../components/WaWallpaper';
 import WaAvatar from '../components/WaAvatar';
 import EmojiPicker from '../components/EmojiPicker';
+import ZoomableImage from '../components/ZoomableImage';
 import { C, WA_LIGHT, WA_DARK } from '../utils/theme';
 import { useWaTheme } from '../utils/waTheme';
 
@@ -146,8 +147,8 @@ const PHOTO_QUALITY = {
 // Header icons are small; give them a touch target that is not.
 const HIT = { top: 10, bottom: 10, left: 10, right: 10 };
 
-// What the chat header's menu offers. Call and Jobs are deliberately not here —
-// they stay on the header, one tap away, being the two things reached for
+// What the chat header's menu offers. Call, Jobs and Labels are deliberately
+// not here — they stay on the header, one tap away, being what gets reached for
 // mid-conversation.
 const HEADER_ITEMS = [
   {
@@ -165,14 +166,6 @@ const HEADER_ITEMS = [
     color: '#5D5FEF',
     enabled: () => true,
     run: a => a.openMedia(),
-  },
-  {
-    id: 'labels',
-    label: 'Labels',
-    icon: 'label',
-    color: '#B4711E',
-    enabled: () => true,
-    run: a => a.openLabels(),
   },
 ];
 
@@ -371,7 +364,7 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
     setViewing({ list, index });
   };
 
-  const stepViewer = by =>
+  const stepViewer = useCallback(by =>
     setViewing(current => {
       if (!current) return current;
 
@@ -379,7 +372,23 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
       return next < 0 || next >= current.list.length
         ? current
         : { ...current, index: next };
+    }), []);
+
+  const closeViewer = useCallback(() => setViewing(null), []);
+  const showNextPhoto = useCallback(() => stepViewer(1), [stepViewer]);
+  const showPrevPhoto = useCallback(() => stepViewer(-1), [stepViewer]);
+
+  // Pull the neighbours into the image cache while the current one is on
+  // screen. Without this every swipe waited on a fresh download, which is what
+  // the delay after letting go actually was.
+  useEffect(() => {
+    if (!viewing) return;
+
+    [viewing.index - 1, viewing.index + 1].forEach(i => {
+      const near = viewing.list[i];
+      if (near?.media_url) Image.prefetch(near.media_url).catch(() => {});
     });
+  }, [viewing]);
 
   // Which voice note is playing, and how far through. One at a time: the
   // recorder library holds a single player.
@@ -486,6 +495,14 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
               <WaIcon name="doc" size={21} color="#fff" />
             </TouchableOpacity>
           )}
+
+          <TouchableOpacity
+            onPress={openLabels}
+            accessibilityLabel="Labels"
+            hitSlop={HIT}
+          >
+            <WaIcon name="label" size={21} color="#fff" />
+          </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => setHeaderMenuOpen(true)}
@@ -2067,8 +2084,16 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
+      // 'padding' on Android too, not undefined. Undefined leaves it to the
+      // window resizing itself under adjustResize, and Android 15 stopped doing
+      // that for edge-to-edge apps — which is why the composer vanished under
+      // the keyboard on newer phones and was fine on older ones. Padding is
+      // measured from the keyboard's own frame, so it comes out at zero on the
+      // phones where the window still resizes: correct either way.
+      behavior="padding"
+      // The view starts at the top of the window on Android, so there is nothing
+      // to compensate for; on iOS it sits below the header.
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* Behind everything: absolutely positioned, so it does not affect layout
           and the list scrolls over a still background the way WhatsApp's does. */}
@@ -2314,7 +2339,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                     style={styles.attachTile}
                     onPress={() => {
                       setHeaderMenuOpen(false);
-                      tile.run({ openMedia, setSearchOpen, openLabels });
+                      tile.run({ openMedia, setSearchOpen });
                     }}
                   >
                     <View style={styles.attachCircle}>
@@ -3278,45 +3303,16 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
               </View>
 
               <View style={styles.viewerBody}>
-                {/* Tapping the photo closes it again, as it does in WhatsApp. */}
-                <TouchableOpacity
-                  style={styles.viewerBody}
-                  activeOpacity={1}
-                  onPress={() => setViewing(null)}
-                >
-                  {!!photo && (
-                    <Image
-                      source={{ uri: photo.media_url }}
-                      style={styles.viewerImage}
-                      resizeMode="contain"
-                    />
-                  )}
-                </TouchableOpacity>
-
-                {hasPrev && (
-                  <TouchableOpacity
-                    style={[styles.viewerArrow, styles.viewerArrowLeft]}
-                    onPress={() => stepViewer(-1)}
-                    accessibilityLabel="Previous photo"
-                  >
-                    <WaIcon name="back" size={24} color="#fff" />
-                  </TouchableOpacity>
-                )}
-
-                {hasNext && (
-                  <TouchableOpacity
-                    style={[styles.viewerArrow, styles.viewerArrowRight]}
-                    onPress={() => stepViewer(1)}
-                    accessibilityLabel="Next photo"
-                  >
-                    {/* The same arrow, turned round — one path, two directions. */}
-                    <WaIcon
-                      name="back"
-                      size={24}
-                      color="#fff"
-                      style={styles.flipped}
-                    />
-                  </TouchableOpacity>
+                {!!photo && (
+                  // Keyed on the photo so moving to the next one starts it
+                  // unzoomed rather than inheriting the last one's pinch.
+                  <ZoomableImage
+                    key={photo.id ?? viewing.index}
+                    uri={photo.media_url}
+                    onTap={closeViewer}
+                    onSwipeLeft={hasNext ? showNextPhoto : undefined}
+                    onSwipeRight={hasPrev ? showPrevPhoto : undefined}
+                  />
                 )}
               </View>
 
@@ -3634,23 +3630,6 @@ const makeStyles = T => StyleSheet.create({
   viewerBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   viewerBody: { flex: 1 },
   viewerCount: { color: '#fff', fontSize: 14, alignSelf: 'center' },
-  // Over the photo rather than beside it: a photo shown "contain" leaves black
-  // bars at the sides, and that is where the arrows sit.
-  viewerArrow: {
-    position: 'absolute',
-    top: '50%',
-    marginTop: -22,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  viewerArrowLeft: { left: 10 },
-  viewerArrowRight: { right: 10 },
-  flipped: { transform: [{ scaleX: -1 }] },
-  viewerImage: { flex: 1, width: '100%' },
   viewerCaption: {
     color: '#fff',
     fontSize: 14,
@@ -3994,8 +3973,10 @@ const makeStyles = T => StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 18,
-    marginRight: 14,
+    // Four buttons now, so they close up a little to leave the customer's name
+    // somewhere to be.
+    gap: 14,
+    marginRight: 12,
   },
   tabRow: {
     flexDirection: 'row',
