@@ -582,14 +582,25 @@ const WhatsAppChatsScreen = ({ navigation }) => {
                   ]}
                   onPress={() => setJobStatus(on ? '' : key)}
                 >
+                  {/* Unselected, the status still shows its colour in the text
+                      and the count — the same as the web CRM, so the three are
+                      told apart without having to tap one. */}
                   <Text
-                    style={[styles.jobPillText, on && styles.jobPillTextOn]}
+                    style={[
+                      styles.jobPillText,
+                      on ? styles.jobPillTextOn : { color: colour },
+                    ]}
                   >
                     {label}
                   </Text>
-                  <View style={[styles.jobCount, on && styles.jobCountOn]}>
+                  <View
+                    style={[
+                      styles.jobCount,
+                      on ? styles.jobCountOn : { backgroundColor: colour },
+                    ]}
+                  >
                     <Text
-                      style={[styles.jobCountText, on && styles.jobPillTextOn]}
+                      style={[styles.jobCountText, styles.jobPillTextOn]}
                     >
                       {jobCounts[key] ?? 0}
                     </Text>
@@ -1247,7 +1258,7 @@ const makeStyles = T => StyleSheet.create({
     backgroundColor: T.panelAlt,
   },
   jobCountOn: { backgroundColor: 'rgba(255,255,255,0.25)' },
-  jobCountText: { fontSize: 11, fontWeight: '700', color: T.textMuted },
+  jobCountText: { fontSize: 11, fontWeight: '700' },
   jobClear: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -32,10 +32,12 @@ const FILTERS = [
   { key: 'all', label: 'All' },
 ];
 
+// The web CRM's own status colours, so a job that reads "Delay" there is the
+// same red here. Used for both the filter tabs and each card's status pill.
 const OVERALL_COLORS = {
-  ongoing: C.accent,
-  delay: C.danger,
-  completed: C.success,
+  ongoing: '#2563EB',
+  delay: '#E0333F',
+  completed: '#1DA13B',
 };
 
 // Job cards store whatever format the number was entered in, so matching on the
@@ -170,10 +172,17 @@ const WhatsAppJobsScreen = ({ route, navigation }) => {
               ? counts.ongoing + counts.delay + counts.completed
               : counts[f.key] ?? 0;
 
+          // Each status carries its own colour when selected; All has no
+          // status of its own, so it takes the app's accent.
+          const colour = OVERALL_COLORS[f.key] || C.accent;
+
           return (
             <TouchableOpacity
               key={f.key}
-              style={[styles.tab, filter === f.key && styles.tabActive]}
+              style={[
+                styles.tab,
+                filter === f.key && { backgroundColor: colour, borderColor: colour },
+              ]}
               onPress={() => setFilter(f.key)}
             >
               <Text
@@ -315,7 +324,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: C.surface,
   },
-  tabActive: { backgroundColor: C.accent, borderColor: C.accent },
   tabText: { fontSize: 11.5, fontWeight: '700', color: C.textSecondary },
   tabTextActive: { color: C.surface },
   list: { flex: 1 },

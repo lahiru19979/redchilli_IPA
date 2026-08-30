@@ -50,7 +50,9 @@ const LoginScreen = () => {
             resizeMode="contain"
           />
           <Text style={styles.title}>RC Merchant</Text>
-          <Text style={styles.subtitle}>Manage your invoices easily</Text>
+          <Text style={styles.subtitle}>
+            The Power Behind Every RedChilli Process
+          </Text>
         </View>
 
         <View style={styles.formContainer}>
@@ -132,6 +134,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: C.textSecondary,
     marginTop: 8,
+    // A longer line than before, so it centres and wraps rather than sitting
+    // hard against the edges on a narrow phone.
+    textAlign: 'center',
+    paddingHorizontal: 24,
   },
   formContainer: {
     backgroundColor: C.surface,

@@ -21,7 +21,6 @@ import {
   Linking,
   Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Modal,
   ScrollView,
@@ -38,6 +37,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { whatsappAPI, MEDIA_BASE_URL } from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import KeyboardAvoider from '../components/KeyboardAvoider';
 import WaIcon, { WaTicks } from '../components/WaIcon';
 import WaWallpaper from '../components/WaWallpaper';
 import WaAvatar from '../components/WaAvatar';
@@ -2082,7 +2082,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
   }
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAvoider
       style={styles.container}
       // 'padding' on Android too, not undefined. Undefined leaves it to the
       // window resizing itself under adjustResize, and Android 15 stopped doing
@@ -3434,7 +3434,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
           </View>
         </View>
       </Modal>
-    </KeyboardAvoidingView>
+    </KeyboardAvoider>
   );
 };
 
