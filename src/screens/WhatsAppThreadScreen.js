@@ -328,7 +328,15 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
   const [locLat, setLocLat] = useState('');
   const [locLng, setLocLng] = useState('');
   const [locName, setLocName] = useState('');
+  const [locAddress, setLocAddress] = useState('');
   const [locBody, setLocBody] = useState('Could you share your location?');
+
+  // Pins saved for reuse. The same table the web CRM writes to, so a place
+  // saved at a desk is here and the other way round.
+  const [savedPlaces, setSavedPlaces] = useState([]);
+  const [loadingPlaces, setLoadingPlaces] = useState(false);
+  const [locSaveLabel, setLocSaveLabel] = useState('');
+  const [savingPlace, setSavingPlace] = useState(false);
 
   // The bubble whose action sheet is open, plus the reply/forward state.
   const [actionMsg, setActionMsg] = useState(null);
@@ -462,9 +470,20 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
       headerTitle: () => (
         <View style={styles.headerTitle}>
           <WaAvatar id={customerId} name={name || phone} size={34} />
-          <Text style={styles.headerName} numberOfLines={1}>
-            {name || phone || 'Chat'}
-          </Text>
+
+          <View style={styles.headerTitleText}>
+            <Text style={styles.headerName} numberOfLines={1}>
+              {name || phone || 'Chat'}
+            </Text>
+
+            {/* Only when the name is on the line above; otherwise the title is
+                already the number and this would print it twice. */}
+            {!!name && !!phone && (
+              <Text style={styles.headerPhone} numberOfLines={1}>
+                {phone}
+              </Text>
+            )}
+          </View>
         </View>
       ),
       headerTitleAlign: 'left',
@@ -1119,10 +1138,124 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
     }
   };
 
+  const loadSavedPlaces = useCallback(async () => {
+    setLoadingPlaces(true);
+
+    try {
+      const res = await whatsappAPI.getSavedLocations();
+      setSavedPlaces(res.data.places || []);
+    } catch (error) {
+      setSavedPlaces([]);
+    } finally {
+      setLoadingPlaces(false);
+    }
+  }, []);
+
   const openLocation = () => {
-    // A link left over from the last place would silently send that one again.
+    // Anything left over from the last place would silently send that one again.
     setLocLink('');
+    setLocLat('');
+    setLocLng('');
+    setLocName('');
+    setLocAddress('');
+    setLocSaveLabel('');
+    // Saved places first, the way the web CRM opens: reusing the shop's pin is
+    // the common case, pasting a fresh link the rare one.
+    setLocMode('saved');
     setLocationOpen(true);
+    loadSavedPlaces();
+  };
+
+  const savePlace = async () => {
+    if (savingPlace) return;
+
+    const label = locSaveLabel.trim();
+
+    if (!label) {
+      Alert.alert('Name it first', 'Give the pin a name, such as Shop.');
+      return;
+    }
+
+    let lat = parseFloat(locLat);
+    let lng = parseFloat(locLng);
+
+    // A pasted link is the whole answer here too.
+    if ((isNaN(lat) || isNaN(lng)) && locLink.trim()) {
+      const place = await readLocationLink();
+      if (!place) return;
+
+      lat = place.latitude;
+      lng = place.longitude;
+    }
+
+    if (isNaN(lat) || isNaN(lng)) {
+      Alert.alert('No location yet', 'Paste a Google Maps link first.');
+      return;
+    }
+
+    setSavingPlace(true);
+
+    try {
+      await whatsappAPI.saveLocation({
+        label,
+        latitude: lat,
+        longitude: lng,
+        name: locName.trim(),
+        address: locAddress.trim(),
+      });
+
+      setLocSaveLabel('');
+      await loadSavedPlaces();
+      setLocMode('saved');
+    } catch (error) {
+      Alert.alert('Not saved', 'That pin could not be saved.');
+    } finally {
+      setSavingPlace(false);
+    }
+  };
+
+  const forgetPlace = place => {
+    Alert.alert('Forget this place?', `"${place.label}" will be removed.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Forget',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await whatsappAPI.deleteSavedLocation(place.id);
+            setSavedPlaces(prev => prev.filter(x => x.id !== place.id));
+          } catch (error) {
+            Alert.alert('Not removed', 'That place could not be removed.');
+          }
+        },
+      },
+    ]);
+  };
+
+  const sendSavedPlace = async place => {
+    if (sending) return;
+
+    setSending(true);
+
+    try {
+      const res = await whatsappAPI.sendLocation({
+        customer_id: customerId,
+        mode: 'share',
+        latitude: place.latitude,
+        longitude: place.longitude,
+        name: place.name || place.label,
+        address: place.address || '',
+      });
+
+      appendLocal(res.data.message);
+      setLocationOpen(false);
+    } catch (error) {
+      const failed = error?.response?.data?.message;
+      if (failed?.id) appendLocal(failed);
+      Alert.alert('Not sent', 'WhatsApp rejected this location message.');
+    } finally {
+      setSending(false);
+    }
   };
 
   const readLocationLink = async ({ quiet = false } = {}) => {
@@ -1145,6 +1278,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
       setLocLng(String(place.longitude));
       // Only a suggestion: a name already typed is the agent's.
       if (place.name && !locName.trim()) setLocName(place.name);
+      if (place.address && !locAddress.trim()) setLocAddress(place.address);
 
       return place;
     } catch (error) {
@@ -2822,6 +2956,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
 
             <View style={styles.tabRow}>
               {[
+                ['saved', 'Saved'],
                 ['share', 'Share a pin'],
                 ['request', 'Ask the customer'],
               ].map(([key, label]) => (
@@ -2842,7 +2977,51 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
               ))}
             </View>
 
-            {locMode === 'share' ? (
+            {locMode === 'saved' ? (
+              <>
+                {loadingPlaces ? (
+                  <ActivityIndicator color={WA.accent} style={styles.locLoading} />
+                ) : savedPlaces.length === 0 ? (
+                  <Text style={styles.modalHint}>
+                    No saved places yet. Save one from the "Share a pin" tab and
+                    it will be here next time.
+                  </Text>
+                ) : (
+                  <ScrollView style={styles.locList}>
+                    {savedPlaces.map(place => (
+                      <View key={place.id} style={styles.locRow}>
+                        <View style={styles.locRowMeta}>
+                          <Text style={styles.locRowLabel} numberOfLines={1}>
+                            📍 {place.label}
+                          </Text>
+                          {!!(place.name || place.address) && (
+                            <Text style={styles.locRowSub} numberOfLines={1}>
+                              {place.name || place.address}
+                            </Text>
+                          )}
+                        </View>
+
+                        <TouchableOpacity
+                          style={[styles.locSendBtn, sending && styles.disabled]}
+                          onPress={() => sendSavedPlace(place)}
+                          disabled={sending}
+                        >
+                          <Text style={styles.locSendBtnText}>Send</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.locForgetBtn}
+                          onPress={() => forgetPlace(place)}
+                          hitSlop={HIT}
+                        >
+                          <Text style={styles.locForgetBtnText}>×</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+              </>
+            ) : locMode === 'share' ? (
               <>
                 <TextInput
                   style={styles.modalInput}
@@ -2890,20 +3069,33 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                   )}
                 </TouchableOpacity>
 
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="Latitude"
-                  placeholderTextColor={WA.textMuted}
-                  value={locLat}
-                  onChangeText={setLocLat}
-                />
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="Longitude"
-                  placeholderTextColor={WA.textMuted}
-                  value={locLng}
-                  onChangeText={setLocLng}
-                />
+                {/* The coordinates are what WhatsApp is actually sent, but
+                    nobody types them: the link is read into them. So say
+                    whether there is a pin rather than showing the numbers. */}
+                {!!(locLat && locLng) && (
+                  <Text style={styles.locReady}>✓ Pin ready to send</Text>
+                )}
+
+                <View style={styles.locSaveRow}>
+                  <TextInput
+                    style={[styles.modalInput, styles.locSaveInput]}
+                    placeholder="Save this pin as… (e.g. Shop)"
+                    placeholderTextColor={WA.textMuted}
+                    value={locSaveLabel}
+                    onChangeText={setLocSaveLabel}
+                  />
+                  <TouchableOpacity
+                    style={[styles.locSaveBtn, savingPlace && styles.disabled]}
+                    onPress={savePlace}
+                    disabled={savingPlace}
+                  >
+                    {savingPlace ? (
+                      <ActivityIndicator color={WA.accent} size="small" />
+                    ) : (
+                      <Text style={styles.locSaveBtnText}>Save</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </>
             ) : (
               <>
@@ -2927,17 +3119,19 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.modalPrimary, sending && styles.disabled]}
-                onPress={sendLocation}
-                disabled={sending}
-              >
-                {sending ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.modalPrimaryText}>Send</Text>
-                )}
-              </TouchableOpacity>
+              {locMode !== 'saved' && (
+                <TouchableOpacity
+                  style={[styles.modalPrimary, sending && styles.disabled]}
+                  onPress={sendLocation}
+                  disabled={sending}
+                >
+                  {sending ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.modalPrimaryText}>Send</Text>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -3575,6 +3769,39 @@ const makeStyles = T => StyleSheet.create({
     marginBottom: 8,
   },
   locateBtnText: { color: T.accent, fontWeight: '600', fontSize: 13.5 },
+  locLoading: { marginVertical: 20 },
+  locList: { maxHeight: 260 },
+  locRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: T.divider,
+  },
+  locRowMeta: { flex: 1 },
+  locRowLabel: { fontSize: 14.5, color: T.text, fontWeight: '600' },
+  locRowSub: { fontSize: 12, color: T.textMuted, marginTop: 2 },
+  locSendBtn: {
+    backgroundColor: T.accent,
+    borderRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  locSendBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  locForgetBtn: { paddingHorizontal: 6 },
+  locForgetBtnText: { color: T.textMuted, fontSize: 20, lineHeight: 22 },
+  locReady: { color: T.accent, fontSize: 13, fontWeight: '600', marginBottom: 10 },
+  locSaveRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  locSaveInput: { flex: 1, marginBottom: 0 },
+  locSaveBtn: {
+    borderWidth: 1,
+    borderColor: T.accent,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  locSaveBtnText: { color: T.accent, fontWeight: '600', fontSize: 13.5 },
   adCard: {
     flexDirection: 'row',
     alignSelf: 'stretch',
@@ -3965,10 +4192,18 @@ const makeStyles = T => StyleSheet.create({
     // Leaves the back arrow its room and keeps a long name off the icons.
     maxWidth: 200,
   },
+  headerTitleText: { flexShrink: 1 },
   headerName: {
     flexShrink: 1,
     color: '#fff',
     fontSize: 17,
+  },
+  // Small and dimmed: the name is what identifies the chat, the number is a
+  // detail an agent occasionally needs to read out.
+  headerPhone: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11.5,
+    marginTop: 1,
   },
   headerRow: {
     flexDirection: 'row',

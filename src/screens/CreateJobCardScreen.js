@@ -25,10 +25,25 @@ const CreateJobCardScreen = ({ route, navigation }) => {
   // Opened from a WhatsApp chat's Jobs panel, the customer's number comes
   // through so the agent does not have to retype it.
   const [phoneNumber, setPhoneNumber] = useState(route.params?.phone || '');
+
+  // Coming from a chat, the number is the customer's and must not drift from
+  // it: an edit here would file the job against someone else. Opened from the
+  // job list there is no customer yet, so it stays typeable.
+  const fixedPhone = !!route.params?.phone;
   const [deliveryAt, setDeliveryAt] = useState('');
   const [selectedTypes, setSelectedTypes] = useState({}); // { [taskTypeId]: true }
   const [assignedUser, setAssignedUser] = useState({}); // { [taskTypeId]: userId }
   const [qty, setQty] = useState({}); // { [taskTypeId]: string }
+
+  // Passed in, this screen edits that card instead of opening a blank one. The
+  // fields are identical, so an edit screen would only be this one duplicated.
+  const jobId = route.params?.jobId ?? null;
+  const editing = jobId != null;
+
+  // Task types the card already has under way. Their assignee is the transfer
+  // flow's to change, and dropping one would discard the times its owner
+  // recorded, so both are locked here — matching the web.
+  const [startedTypes, setStartedTypes] = useState({});
 
   const loadData = useCallback(async () => {
     try {
@@ -41,19 +56,59 @@ const CreateJobCardScreen = ({ route, navigation }) => {
       );
       setTaskTypes(types);
       setUsers(usersRes.data.users || []);
+
+      if (editing) {
+        const card = (await taskAPI.getJobCard(jobId)).data.job_card;
+
+        setPhoneNumber(card.phone_number || '');
+        // The API sends 'YYYY-MM-DD HH:mm:ss'; the picker wants minutes.
+        setDeliveryAt(card.delivery_at ? String(card.delivery_at).slice(0, 16) : '');
+
+        const chosen = {};
+        const started = {};
+        const assigned = {};
+        const quantities = {};
+
+        (card.tasks || []).forEach(task => {
+          const typeId = String(task.task_type_id);
+
+          chosen[typeId] = true;
+          if (task.actual_start_at) started[typeId] = true;
+          if (task.assigned_user_id) assigned[typeId] = task.assigned_user_id;
+          if (task.qty != null) quantities[typeId] = String(task.qty);
+        });
+
+        setSelectedTypes(chosen);
+        setStartedTypes(started);
+        setAssignedUser(assigned);
+        setQty(quantities);
+      }
     } catch (error) {
       console.error('Load job card form data error:', error?.response?.data || error);
       Alert.alert('Error', 'Could not load task types / users.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [editing, jobId]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    navigation.setOptions({ title: editing ? 'Edit Job Card' : 'Create Job Card' });
+  }, [navigation, editing]);
+
   const toggleType = id => {
+    if (startedTypes[id]) {
+      Alert.alert(
+        'Already started',
+        'Somebody has started this task, so it cannot be taken off the card. '
+          + 'Its quantity can still be changed.',
+      );
+      return;
+    }
+
     setSelectedTypes(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
@@ -87,15 +142,22 @@ const CreateJobCardScreen = ({ route, navigation }) => {
 
     try {
       setSubmitting(true);
-      const res = await taskAPI.createJobCard(payload);
-      Alert.alert('Success', res.data.message || 'Job card created.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+
+      const res = editing
+        ? await taskAPI.updateJobCard(jobId, payload)
+        : await taskAPI.createJobCard(payload);
+
+      Alert.alert(
+        'Success',
+        res.data.message || (editing ? 'Job card updated.' : 'Job card created.'),
+        [{ text: 'OK', onPress: () => navigation.goBack() }],
+      );
     } catch (error) {
-      console.error('Create job card error:', error?.response?.data || error);
+      console.error('Save job card error:', error?.response?.data || error);
       Alert.alert(
         'Error',
-        error?.response?.data?.message || 'Could not create the job card.',
+        error?.response?.data?.message
+          || (editing ? 'Could not update the job card.' : 'Could not create the job card.'),
       );
     } finally {
       setSubmitting(false);
@@ -111,15 +173,16 @@ const CreateJobCardScreen = ({ route, navigation }) => {
       <View style={styles.form}>
         <Text style={styles.fieldLabel}>Phone Number</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, fixedPhone && styles.inputFixed]}
           placeholder="07XXXXXXXX"
           value={phoneNumber}
           onChangeText={setPhoneNumber}
           keyboardType="phone-pad"
+          editable={!fixedPhone}
         />
 
         <DateTimeField
-          label="Delivery Date/Time"
+          label="Delivery Date/Time (Sri Lanka time)"
           value={deliveryAt}
           onChange={setDeliveryAt}
           placeholder="Select delivery date & time"
@@ -202,7 +265,9 @@ const CreateJobCardScreen = ({ route, navigation }) => {
           {submitting ? (
             <ActivityIndicator color={C.surface} />
           ) : (
-            <Text style={styles.submitBtnText}>Create Job Card</Text>
+            <Text style={styles.submitBtnText}>
+              {editing ? 'Save Changes' : 'Create Job Card'}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
@@ -232,6 +297,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     marginBottom: 16,
+  },
+  // Reads as filled in rather than broken: greyed, but the number stays legible.
+  inputFixed: {
+    backgroundColor: C.bg,
+    color: C.textSecondary,
   },
   inputSmall: {
     backgroundColor: C.bgAlt,

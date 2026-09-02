@@ -279,6 +279,7 @@ export const taskAPI = {
     apiClient.get('/job-cards', { params: { filter, searchKey, deliveryDate } }),
   createJobCard: data => apiClient.post('/job-cards', data),
   getJobCard: id => apiClient.get(`/job-cards/${id}`),
+  updateJobCard: (id, data) => apiClient.put(`/job-cards/${id}`, data),
   deleteJobCard: id => apiClient.delete(`/job-cards/${id}`),
   reassignTask: data => apiClient.post('/job-cards/task/reassign', data),
   resetTaskSchedule: taskId =>
@@ -383,6 +384,16 @@ export const whatsappAPI = {
   // to find out where they point, which only the server can do.
   resolveLocation: url =>
     apiClient.post('/whatsapp/resolve-location', { url }),
+
+  // Pins saved for reuse — the shop, a pickup point. Shared with the web CRM,
+  // so a place saved at a desk shows up on the phone and the other way round.
+  getSavedLocations: () => apiClient.get('/whatsapp/saved-locations'),
+
+  saveLocation: payload =>
+    apiClient.post('/whatsapp/saved-locations', payload),
+
+  deleteSavedLocation: id =>
+    apiClient.delete(`/whatsapp/saved-locations/${id}`),
 
   // Per-message pin and star. Omit `value` to flip whatever the message is now.
   pinMessage: (messageId, value) =>

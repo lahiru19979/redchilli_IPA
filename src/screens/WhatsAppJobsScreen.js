@@ -55,6 +55,7 @@ const WhatsAppJobsScreen = ({ route, navigation }) => {
   const canView = hasPermission('view_job_cards');
   const canCreate = hasPermission('create_job_cards');
   const canDelete = hasPermission('delete_job_cards');
+  const canEdit = hasPermission('admin_job_card_edit');
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -210,12 +211,13 @@ const WhatsAppJobsScreen = ({ route, navigation }) => {
           </Text>
         ) : (
           jobs.map(job => (
-            <View key={job.id} style={styles.card}>
-              <TouchableOpacity
-                style={styles.cardHead}
-                onPress={() => navigation.navigate('JobCardDetail', { id: job.id })}
-                activeOpacity={0.7}
-              >
+            <TouchableOpacity
+              key={job.id}
+              style={styles.card}
+              onPress={() => navigation.navigate('JobCardDetail', { id: job.id })}
+              activeOpacity={0.7}
+            >
+              <View style={styles.cardHead}>
                 <Text style={styles.jobNo}>🗂 {job.job_number}</Text>
 
                 <View
@@ -231,7 +233,7 @@ const WhatsAppJobsScreen = ({ route, navigation }) => {
                     {(job.overall_status || 'ongoing').toUpperCase()}
                   </Text>
                 </View>
-              </TouchableOpacity>
+              </View>
 
               <Text style={styles.cardSub}>
                 🚚{' '}
@@ -269,6 +271,17 @@ const WhatsAppJobsScreen = ({ route, navigation }) => {
                 </View>
               ))}
 
+              {canEdit && (
+                <TouchableOpacity
+                  style={styles.editBtn}
+                  onPress={() =>
+                    navigation.navigate('CreateJobCard', { jobId: job.id })
+                  }
+                >
+                  <Text style={styles.editBtnText}>✎ Edit job card</Text>
+                </TouchableOpacity>
+              )}
+
               {canDelete && (
                 <TouchableOpacity
                   style={styles.deleteBtn}
@@ -282,7 +295,7 @@ const WhatsAppJobsScreen = ({ route, navigation }) => {
                   )}
                 </TouchableOpacity>
               )}
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>
@@ -360,6 +373,11 @@ const styles = StyleSheet.create({
   taskUser: { width: 74, fontSize: 11.5, color: C.textSecondary },
   taskBadge: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
   taskBadgeText: { fontSize: 10, fontWeight: '700' },
+  editBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+  },
+  editBtnText: { color: C.accent, fontSize: 12.5, fontWeight: '600' },
   deleteBtn: { alignSelf: 'flex-start', marginTop: 10, paddingVertical: 4 },
   deleteBtnText: { color: C.danger, fontSize: 12.5, fontWeight: '700' },
   newBtn: {

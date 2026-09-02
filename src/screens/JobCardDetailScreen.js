@@ -41,6 +41,7 @@ const JobCardDetailScreen = ({ route, navigation }) => {
   const canTransfer = hasPermission('transfer_job');
   const canReset = hasPermission('reset_schedule');
   const canDelete = hasPermission('delete_job_cards');
+  const canEdit = hasPermission('admin_job_card_edit');
 
   const [loading, setLoading] = useState(true);
   const [jobCard, setJobCard] = useState(null);
@@ -75,6 +76,12 @@ const JobCardDetailScreen = ({ route, navigation }) => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Coming back from the edit screen, what is on screen is now out of date.
+  useEffect(
+    () => navigation.addListener('focus', loadData),
+    [navigation, loadData],
+  );
 
   // One call for all three stages: the API works out from the task's own state
   // whether this is a schedule, a start or a finish, and refuses the rest.
@@ -244,6 +251,15 @@ const JobCardDetailScreen = ({ route, navigation }) => {
           Created by: {jobCard.creator ? `${jobCard.creator.first_name} ${jobCard.creator.last_name}` : '-'}
         </Text>
 
+        {canEdit && (
+          <TouchableOpacity
+            style={styles.editJobBtn}
+            onPress={() => navigation.navigate('CreateJobCard', { jobId: id })}
+          >
+            <Text style={styles.editJobBtnText}>✎ Edit Job Card</Text>
+          </TouchableOpacity>
+        )}
+
         {canDelete && (
           <TouchableOpacity
             style={[styles.deleteJobBtn, deleting && styles.submitBtnDisabled]}
@@ -301,14 +317,14 @@ const JobCardDetailScreen = ({ route, navigation }) => {
             schedulingId === task.id ? (
               <View style={styles.stagePanel}>
                 <DateTimeField
-                  label="Expected start"
+                  label="Expected start (Sri Lanka time)"
                   value={expectedStart}
                   onChange={setExpectedStart}
                   placeholder="Select expected start"
                   compact
                 />
                 <DateTimeField
-                  label="Expected end"
+                  label="Expected end (Sri Lanka time)"
                   value={expectedEnd}
                   onChange={setExpectedEnd}
                   placeholder="Select expected end"
@@ -490,6 +506,15 @@ const styles = StyleSheet.create({
   },
   jobNumber: { fontSize: 20, fontWeight: '700', color: C.textPrimary, marginBottom: 6 },
   headerSub: { fontSize: 13, color: C.textSecondary, marginTop: 2 },
+  editJobBtn: {
+    borderWidth: 1,
+    borderColor: C.accent,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  editJobBtnText: { color: C.accent, fontWeight: '600', fontSize: 15 },
   deleteJobBtn: {
     marginTop: 12,
     alignSelf: 'flex-start',

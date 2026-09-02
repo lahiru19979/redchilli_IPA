@@ -47,6 +47,9 @@ const ZoomableImage = ({ uri, onTap, onSwipeLeft, onSwipeRight }) => {
     downAt: 0,
     lastTapAt: 0,
     swiping: false,
+    // Whether two fingers were ever down during this gesture. A pinch must not
+    // be mistaken for a tap.
+    pinched: false,
   }).current;
 
   // How far the photo may be dragged before its edge comes past the screen's.
@@ -115,6 +118,7 @@ const ZoomableImage = ({ uri, onTap, onSwipeLeft, onSwipeRight }) => {
 
         now.downAt = at;
         now.swiping = false;
+        now.pinched = false;
         now.startScale = now.scale;
         now.startDistance = 0;
         now.startX = now.x;
@@ -137,7 +141,11 @@ const ZoomableImage = ({ uri, onTap, onSwipeLeft, onSwipeRight }) => {
           return;
         }
 
-        now.lastTapAt = at;
+        // Deliberately not set here. A touch only becomes a tap once it is
+        // released without having moved or grown a second finger; recording it
+        // on the way down made the first finger of every pinch look like one,
+        // so pinching twice in quick succession read as a double tap and threw
+        // the zoom away.
       },
 
       onPanResponderMove: (event, gesture) => {
@@ -150,6 +158,8 @@ const ZoomableImage = ({ uri, onTap, onSwipeLeft, onSwipeRight }) => {
           );
 
           // The first move of a pinch only establishes the starting span.
+          now.pinched = true;
+
           if (!now.startDistance) {
             now.startDistance = distance;
             now.startScale = now.scale;
@@ -165,6 +175,15 @@ const ZoomableImage = ({ uri, onTap, onSwipeLeft, onSwipeRight }) => {
         }
 
         if (now.scale > 1) {
+          // Straight out of a pinch, dx/dy are still counted from where the
+          // first finger landed, which is nowhere near where the remaining one
+          // is now. Re-base them, or the photo jumps the moment a finger lifts.
+          if (now.startDistance) {
+            now.startDistance = 0;
+            now.startX = now.x - gesture.dx;
+            now.startY = now.y - gesture.dy;
+          }
+
           apply(now.scale, now.startX + gesture.dx, now.startY + gesture.dy);
           return;
         }
@@ -180,10 +199,15 @@ const ZoomableImage = ({ uri, onTap, onSwipeLeft, onSwipeRight }) => {
       },
 
       onPanResponderRelease: (event, gesture) => {
-        const quick = Date.now() - now.downAt < TAP_MS;
+        const at = Date.now();
+        const quick = at - now.downAt < TAP_MS;
         const still =
           Math.abs(gesture.dx) < TAP_SLOP && Math.abs(gesture.dy) < TAP_SLOP;
+        // What the next touch-down compares itself against. A pinch or a drag
+        // leaves nothing behind, so it can never start a double tap.
+        const tapped = quick && still && !now.pinched;
 
+        now.lastTapAt = tapped ? at : 0;
         now.startDistance = 0;
         now.startX = now.x;
         now.startY = now.y;
@@ -216,7 +240,7 @@ const ZoomableImage = ({ uri, onTap, onSwipeLeft, onSwipeRight }) => {
         }
 
         // A plain tap on an unzoomed photo still closes the viewer.
-        if (quick && still && now.scale <= 1.02 && onTap) onTap();
+        if (tapped && now.scale <= 1.02 && onTap) onTap();
       },
 
       onPanResponderTerminationRequest: () => false,
