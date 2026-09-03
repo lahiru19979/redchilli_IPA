@@ -131,6 +131,39 @@ const mimeFor = path =>
 // of a caption. Printing them under the attachment is just noise.
 const isPlaceholderBody = body => !body || /^\[.*\]$/.test(body.trim());
 
+// The server sends 'YYYY-MM-DD HH:mm:ss' in the workshop's timezone, so the day
+// is the first ten characters. Slicing rather than parsing keeps the device's
+// own timezone out of it, which would otherwise pull a late-night message onto
+// the wrong day for anyone abroad.
+const dayKey = at => String(at || '').slice(0, 10);
+
+const asKey = d =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
+
+// The same wording the web CRM uses: Today, Yesterday, then the full date.
+const dayLabel = at => {
+  const key = dayKey(at);
+
+  if (!key) return '';
+
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  if (key === asKey(today)) return 'Today';
+  if (key === asKey(yesterday)) return 'Yesterday';
+
+  const [y, m, d] = key.split('-').map(Number);
+
+  return new Date(y, m - 1, d).toLocaleDateString([], {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
+
 // The + sheet's tiles, in the order WhatsApp lays them out. Kept as data rather
 // than repeated JSX so the permission rules and the colours sit in one place.
 // What a photo is re-encoded at on the way out. The long edge is capped rather
@@ -252,7 +285,29 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
     return () => clearTimeout(id);
   }, [selection]);
 
+  // Writing to `selection` focuses the box on Android, which would trip the
+  // composer's onFocus and shut the emoji panel after a single tap. This marks
+  // the focus as our own doing so it is ignored once. A ref, not state: it must
+  // not cause a render. The timer matters as much as the flag — where the focus
+  // never comes (iOS, or the box was focused already) a flag left standing would
+  // swallow the user's next real tap on the box.
+  const pickingRef = useRef(false);
+  const pickingTimer = useRef(null);
+
+  const holdPanelOpen = () => {
+    pickingRef.current = true;
+
+    clearTimeout(pickingTimer.current);
+    pickingTimer.current = setTimeout(() => {
+      pickingRef.current = false;
+    }, 300);
+  };
+
+  useEffect(() => () => clearTimeout(pickingTimer.current), []);
+
   const replaceAtCaret = replacement => {
+    holdPanelOpen();
+
     const { start, end } = caret.current;
     const a = Math.min(start, text.length);
     const b = Math.min(Math.max(end, a), text.length);
@@ -290,6 +345,8 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
     }
 
     const head = points.join('');
+
+    holdPanelOpen();
     setText(head + text.slice(a));
     caret.current = { start: head.length, end: head.length };
     setSelection({ start: head.length, end: head.length });
@@ -427,6 +484,11 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
 
   // Saved replies: the same library the web CRM manages.
   const [savedOpen, setSavedOpen] = useState(false);
+  const [replySearch, setReplySearch] = useState('');
+  // Positions of the already-saved photos crossed out in this edit. Applied
+  // server-side before new uploads are appended, so the indexes still mean what
+  // they meant on screen. Reversible until Save, so a mistap costs nothing.
+  const [replyRemoved, setReplyRemoved] = useState([]);
   const [savedMode, setSavedMode] = useState('list'); // list | preview | edit
   const [replies, setReplies] = useState([]);
   const [loadingReplies, setLoadingReplies] = useState(false);
@@ -641,6 +703,20 @@ const WhatsAppThreadScreen = ({ route, navigation }) => {
   // latest message is on screen without any scrolling — scrollToEnd on a list that
   // is still laying out is unreliable, which is why it never landed before.
   const inverted = useMemo(() => [...messages].reverse(), [messages]);
+
+  // An agent remembers a saved reply by its name, its shortcut or a phrase in
+  // it, so all three are searched — the same fields the web CRM matches on.
+  const shownReplies = useMemo(() => {
+    const term = replySearch.trim().toLowerCase();
+
+    if (!term) return replies;
+
+    return replies.filter(r =>
+      `${r.title || ''} ${r.shortcut || ''} ${r.body || ''}`
+        .toLowerCase()
+        .includes(term),
+    );
+  }, [replies, replySearch]);
 
   useEffect(() => {
     const grew = messages.length > countRef.current;
@@ -1464,6 +1540,8 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
   const openSavedReplies = () => {
     setSavedMode('list');
     setActiveReply(null);
+    // A term left from last time would hide most of the list on open.
+    setReplySearch('');
     setSavedOpen(true);
     loadReplies();
   };
@@ -1491,6 +1569,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
     // Only newly picked photos live here; the ones already saved stay
     // server-side and are appended to, never replaced.
     setReplyPhotos([]);
+    setReplyRemoved([]);
     setSavedMode('edit');
   };
 
@@ -1532,6 +1611,8 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
     formData.append('title', replyTitle.trim());
     formData.append('shortcut', replyShortcut.trim().replace(/^\//, ''));
     formData.append('body', replyBody);
+
+    replyRemoved.forEach(at => formData.append('remove_images[]', String(at)));
 
     replyPhotos.forEach((photo, i) => {
       formData.append('images[]', {
@@ -1976,15 +2057,29 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
     return <WaIcon name="clock" size={12} color={WA.tick} />;
   };
 
-  const renderBubble = ({ item }) => {
+  const renderBubble = ({ item, index }) => {
     const out = item.direction === 'out';
+
+    // The list is inverted, so index + 1 is the message drawn *above* this one,
+    // which is the older of the two. When its day differs, this bubble is the
+    // first of its day and wears the separator; the oldest one always does.
+    const older = inverted[index + 1];
+    const startsDay =
+      !older || dayKey(older.created_at) !== dayKey(item.created_at);
     const time = new Date(item.created_at.replace(' ', 'T')).toLocaleTimeString(
       [],
       { hour: '2-digit', minute: '2-digit' },
     );
 
     return (
-      <View style={[styles.bubbleRow, out ? styles.rowOut : styles.rowIn]}>
+      <>
+        {startsDay && (
+          <View style={styles.daySeparator}>
+            <Text style={styles.daySeparatorText}>{dayLabel(item.created_at)}</Text>
+          </View>
+        )}
+
+        <View style={[styles.bubbleRow, out ? styles.rowOut : styles.rowIn]}>
         <TouchableOpacity
           activeOpacity={0.85}
           onLongPress={() => !item.deleted && setActionMsg(item)}
@@ -1996,14 +2091,21 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
           ]}
         >
           {!!item.reply_to && (
-            <View style={styles.quote}>
+            /* Tapping the quote goes to the message being replied to, the way
+               WhatsApp does. jumpToMessage already flashes the bubble, and the
+               list handles an index it has not rendered yet. */
+            <TouchableOpacity
+              style={styles.quote}
+              onPress={() => jumpToMessage(item.reply_to.id)}
+              activeOpacity={0.7}
+            >
               <Text style={styles.quoteWho}>
                 {item.reply_to.direction === 'out' ? 'You' : name}
               </Text>
               <Text style={styles.quoteBody} numberOfLines={2}>
                 {item.reply_to.body}
               </Text>
-            </View>
+            </TouchableOpacity>
           )}
           {item.deleted ? (
             <Text style={styles.deleted}>This message was deleted</Text>
@@ -2207,7 +2309,8 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
             <Text style={styles.failMarkText}>!</Text>
           </TouchableOpacity>
         )}
-      </View>
+        </View>
+      </>
     );
   };
 
@@ -2390,8 +2493,16 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                 onSelectionChange={e => {
                   caret.current = e.nativeEvent.selection;
                 }}
-                // Reaching for the keyboard is how you dismiss the panel.
-                onFocus={() => setEmojiOpen(false)}
+                // Reaching for the keyboard is how you dismiss the panel — but
+                // an emoji tap focuses the box too, and that must not count.
+                onFocus={() => {
+                  if (pickingRef.current) {
+                    pickingRef.current = false;
+                    return;
+                  }
+
+                  setEmojiOpen(false);
+                }}
                 multiline
               />
 
@@ -3250,13 +3361,27 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
               loadingReplies ? (
                 <ActivityIndicator color={WA.accent} style={styles.modalLoader} />
               ) : (
+                <>
+                  {replies.length > 0 && (
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="Search saved replies"
+                      placeholderTextColor={WA.textMuted}
+                      value={replySearch}
+                      onChangeText={setReplySearch}
+                      autoCorrect={false}
+                    />
+                  )}
+
                 <ScrollView style={styles.modalScroll}>
                   {replies.length === 0 ? (
                     <Text style={styles.modalHint}>
                       No saved replies yet. Tap New to write one — text, photos, or both.
                     </Text>
+                  ) : shownReplies.length === 0 ? (
+                    <Text style={styles.modalHint}>No saved reply matches that.</Text>
                   ) : (
-                    replies.map(r => (
+                    shownReplies.map(r => (
                       <View key={r.id} style={styles.replyRow}>
                         <TouchableOpacity
                           style={styles.replyRowMain}
@@ -3305,6 +3430,7 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                     ))
                   )}
                 </ScrollView>
+                </>
               )
             ) : savedMode === 'preview' ? (
               <ScrollView style={styles.modalScroll}>
@@ -3362,9 +3488,31 @@ Switch location on in your phone settings, or type the coordinates in by hand.`
                   <>
                     <Text style={styles.modalHint}>Already saved</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      {activeReply.images.map(uri => (
-                        <Image key={uri} source={{ uri }} style={styles.replyEditImg} />
-                      ))}
+                      {activeReply.images.map((uri, at) => {
+                        const gone = replyRemoved.includes(at);
+
+                        return (
+                          <View key={uri} style={styles.replyEditWrap}>
+                            <Image
+                              source={{ uri }}
+                              style={[styles.replyEditImg, gone && styles.replyEditImgGone]}
+                            />
+                            <TouchableOpacity
+                              style={styles.replyEditX}
+                              onPress={() =>
+                                setReplyRemoved(prev =>
+                                  prev.includes(at)
+                                    ? prev.filter(x => x !== at)
+                                    : [...prev, at],
+                                )
+                              }
+                              accessibilityLabel={gone ? 'Keep this photo' : 'Remove this photo'}
+                            >
+                              <Text style={styles.replyEditXText}>{gone ? '↺' : '×'}</Text>
+                            </TouchableOpacity>
+                          </View>
+                        );
+                      })}
                     </ScrollView>
                   </>
                 )}
@@ -3636,6 +3784,21 @@ const makeStyles = T => StyleSheet.create({
   container: { flex: 1, backgroundColor: T.chatBg },
   listContent: { padding: 12 },
   bubbleRow: { flexDirection: 'row', marginBottom: 8 },
+  // A centred pill, the way WhatsApp marks the start of a day.
+  daySeparator: {
+    alignSelf: 'center',
+    backgroundColor: T.bubbleIn,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginVertical: 10,
+  },
+  daySeparatorText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: T.textMuted,
+    textTransform: 'uppercase',
+  },
   rowOut: { justifyContent: 'flex-end' },
   rowIn: { justifyContent: 'flex-start' },
   bubble: {
@@ -4079,6 +4242,7 @@ const makeStyles = T => StyleSheet.create({
     marginRight: 8,
     marginBottom: 8,
   },
+  replyEditImgGone: { opacity: 0.3 },
   replyEditWrap: { position: 'relative' },
   replyEditImg: {
     width: 72,
